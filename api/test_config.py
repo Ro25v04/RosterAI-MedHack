@@ -1,0 +1,4 @@
+from config import BASE_HOURS_PER_WEEK, SHIFT_HOURS
+
+print(BASE_HOURS_PER_WEEK)
+print(SHIFT_HOURS)
