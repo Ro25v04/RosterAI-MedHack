@@ -1,8 +1,11 @@
+# Functionality to read excel rosters
+
 from typing import Dict, Any, List
 import pandas as pd
 from config import COVERAGE_REQUIREMENTS
 
 ALLOWED_SHIFTS = {"AM", "PM", "NIGHT"}
+
 
 def _split_specs(x) -> List[str]:
     if x is None or (isinstance(x, float) and pd.isna(x)):
@@ -12,11 +15,13 @@ def _split_specs(x) -> List[str]:
         return []
     return [p.strip() for p in s.split(";") if p.strip()]
 
+
 def load_roster_from_excel(path: str) -> Dict[str, Any]:
     xl = pd.ExcelFile(path)
 
     if "Staff" not in xl.sheet_names or "Assignments" not in xl.sheet_names:
-        raise ValueError("Excel must have sheets named exactly: Staff and Assignments")
+        raise ValueError(
+            "Excel must have sheets named exactly: Staff and Assignments")
 
     staff_df = pd.read_excel(xl, sheet_name="Staff")
     asg_df = pd.read_excel(xl, sheet_name="Assignments")
@@ -25,7 +30,8 @@ def load_roster_from_excel(path: str) -> Dict[str, Any]:
     staff_required = {"staff_id", "name", "role", "specializations", "fte"}
     missing_staff = staff_required - set(staff_df.columns)
     if missing_staff:
-        raise ValueError(f"Staff sheet missing columns: {sorted(missing_staff)}")
+        raise ValueError(
+            f"Staff sheet missing columns: {sorted(missing_staff)}")
 
     staff: Dict[str, Dict[str, Any]] = {}
     for _, r in staff_df.iterrows():
@@ -54,7 +60,8 @@ def load_roster_from_excel(path: str) -> Dict[str, Any]:
     asg_required = {"date", "shift", "slot", "staff_id"}
     missing_asg = asg_required - set(asg_df.columns)
     if missing_asg:
-        raise ValueError(f"Assignments sheet missing columns: {sorted(missing_asg)}")
+        raise ValueError(
+            f"Assignments sheet missing columns: {sorted(missing_asg)}")
 
     assignments: List[Dict[str, Any]] = []
     for _, r in asg_df.iterrows():
@@ -68,10 +75,12 @@ def load_roster_from_excel(path: str) -> Dict[str, Any]:
 
         max_slot = COVERAGE_REQUIREMENTS[shift] - 1
         if slot < 0 or slot > max_slot:
-            raise ValueError(f"Invalid slot {slot} for {shift}. Must be 0..{max_slot}")
+            raise ValueError(
+                f"Invalid slot {slot} for {shift}. Must be 0..{max_slot}")
 
         if sid not in staff:
-            raise ValueError(f"Unknown staff_id '{sid}' in Assignments (not in Staff sheet).")
+            raise ValueError(
+                f"Unknown staff_id '{sid}' in Assignments (not in Staff sheet).")
 
         assignments.append({
             "date": date_str,
