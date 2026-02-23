@@ -1,6 +1,6 @@
 # api/metrics.py
 from collections import defaultdict
-from datetime import datetime
+from datetime import datetime, date
 from typing import Dict, Any
 from api.config import BASE_HOURS_PER_WEEK, SHIFT_HOURS, MAX_CONSECUTIVE_NIGHTS
 
@@ -44,26 +44,37 @@ def compute_metrics(roster: Dict[str, Any]) -> Dict[str, Any]:
 
     total_overtime = sum(overtime_by_staff.values())
 
-    # 3) Burnout proxy (we’ll optimize later)
-    by_nurse = defaultdict(list)
+    # 3) Burnout proxy: consecutive NIGHT shifts by DAY (correct)
+    def _to_date(x):
+        # supports 'YYYY-MM-DD' strings and date objects
+        if isinstance(x, date):
+            return x
+        return datetime.fromisoformat(str(x)).date()
+
+    by_nurse_night_dates = defaultdict(set)
     for a in assignments:
-        by_nurse[a["staff_id"]].append((a["date"], a["shift"]))
+        if a["shift"] == "NIGHT":
+            by_nurse_night_dates[a["staff_id"]].add(_to_date(a["date"]))
 
     max_night_streak = {}
     night_streak_violation = {}
+
     for sid in staff.keys():
-        shifts = sorted(by_nurse.get(sid, []), key=lambda x: x[0])
+        night_dates = sorted(by_nurse_night_dates.get(sid, set()))
         streak = 0
         max_streak = 0
-        for _, sh in shifts:
-            if sh == "NIGHT":
-                streak += 1
-                max_streak = max(max_streak, streak)
+        prev = None
+
+        for d in night_dates:
+            if prev is None:
+                streak = 1
             else:
-                streak = 0
+                streak = streak + 1 if (d - prev).days == 1 else 1
+            max_streak = max(max_streak, streak)
+            prev = d
+
         max_night_streak[sid] = max_streak
-        night_streak_violation[sid] = max(
-            0, max_streak - int(MAX_CONSECUTIVE_NIGHTS))
+        night_streak_violation[sid] = max(0, max_streak - int(MAX_CONSECUTIVE_NIGHTS))
 
     burnout_risk_score = sum(night_streak_violation.values())
 
