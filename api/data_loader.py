@@ -99,3 +99,23 @@ def load_roster_from_excel(path: str) -> Dict[str, Any]:
         "start_date": dates[0],
         "end_date": dates[-1],
     }
+
+
+def save_roster_to_excel(roster, out_path):
+
+    staff_rows = []
+    for sid, info in roster["staff"].items():
+        staff_rows.append({
+            "staff_id": sid,
+            "name": info.get("name", ""),
+            "role": info.get("role", ""),
+            "specializations": ";".join(info.get("specializations", [])),
+            "fte": info.get("fte", 1.0),
+        })
+
+    staff_df = pd.DataFrame(staff_rows)
+    assignments_df = pd.DataFrame(roster["assignments"])
+
+    with pd.ExcelWriter(out_path, engine="openpyxl") as writer:
+        staff_df.to_excel(writer, sheet_name="Staff", index=False)
+        assignments_df.to_excel(writer, sheet_name="Assignments", index=False)
