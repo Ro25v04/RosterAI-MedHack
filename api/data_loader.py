@@ -2,7 +2,7 @@
 
 from typing import Dict, Any, List
 import pandas as pd
-from config import COVERAGE_REQUIREMENTS
+from api.config import COVERAGE_REQUIREMENTS
 
 ALLOWED_SHIFTS = {"AM", "PM", "NIGHT"}
 

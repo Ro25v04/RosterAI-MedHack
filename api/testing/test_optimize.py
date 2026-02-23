@@ -1,24 +1,37 @@
-# api/test_optimize.py
-from data_loader import load_roster_from_excel, save_roster_to_excel
-from metrics import compute_metrics
-from optimizer import optimize_overtime_only
+from api.data_loader import load_roster_from_excel
+from api.metrics import compute_metrics
+from api.optimizer import optimize_roster
+import sys
+import os
+from api.data_loader import save_roster_to_excel
 
-in_path = "api/data/rosters/sample_roster.xlsx"
-out_path = "api/data/rosters/optimized.xlsx"
+# Add parent folder (api/) to Python path
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
-roster = load_roster_from_excel(in_path)
+
+# Load sample roster
+roster = load_roster_from_excel("api/data/rosters/sample_roster.xlsx")
+
+print("=== BEFORE OPTIMIZATION ===")
 before = compute_metrics(roster)
+print("Total overtime:", before["total_overtime_hours"])
+print("Burnout score:", before["burnout_risk_score"])
+print("Skill match rate:", before["skill_match_rate"])
 
-opt = optimize_overtime_only(roster, iterations=8000)
-after = compute_metrics(opt)
+# Run optimizer
+optimized = optimize_roster(roster)
 
-print("\n=== BEFORE ===")
-print("weeks:", before["weeks"])
-print("total_overtime_hours:", before["total_overtime_hours"])
+print("\n=== AFTER OPTIMIZATION ===")
+after = compute_metrics(optimized)
+print("Total overtime:", after["total_overtime_hours"])
+print("Burnout score:", after["burnout_risk_score"])
+print("Skill match rate:", after["skill_match_rate"])
 
-print("\n=== AFTER ===")
-print("weeks:", after["weeks"])
-print("total_overtime_hours:", after["total_overtime_hours"])
 
-save_roster_to_excel(opt, out_path)
-print("\n✅ Saved:", out_path)
+# Save optimized roster to file
+save_roster_to_excel(
+    optimized,
+    "api/data/rosters/optimized_roster.xlsx"
+)
+
+print("Optimized roster saved to api/data/rosters/optimized_roster.xlsx")

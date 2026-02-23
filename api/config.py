@@ -55,7 +55,5 @@ MAX_CONSECUTIVE_NIGHTS = 5
 WEIGHTS = {
     "overtime": 5,
     "burnout": 3,
-    "fairness": 2,
-    "preference": 1,
-    "change_penalty": 2
+    "skill": 4
 }

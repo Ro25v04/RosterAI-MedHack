@@ -2,7 +2,7 @@
 from collections import defaultdict
 from datetime import datetime
 from typing import Dict, Any
-from config import BASE_HOURS_PER_WEEK, SHIFT_HOURS, MAX_CONSECUTIVE_NIGHTS
+from api.config import BASE_HOURS_PER_WEEK, SHIFT_HOURS, MAX_CONSECUTIVE_NIGHTS
 
 # (keep for later, not used in overtime-only optimization)
 SHIFT_SKILL_PREF = {
