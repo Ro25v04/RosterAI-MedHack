@@ -119,3 +119,100 @@ def save_roster_to_excel(roster, out_path):
     with pd.ExcelWriter(out_path, engine="openpyxl") as writer:
         staff_df.to_excel(writer, sheet_name="Staff", index=False)
         assignments_df.to_excel(writer, sheet_name="Assignments", index=False)
+
+
+def save_optimized_roster_to_excel(
+    original_roster: Dict[str, Any],
+    optimized_roster: Dict[str, Any],
+    before_metrics: Dict[str, Any],
+    after_metrics: Dict[str, Any],
+    out_path: str,
+):
+    """
+    Saves optimized roster to Excel with:
+    - Staff
+    - Assignments
+    - Optimization Summary (before vs after)
+    - Changes (which rows changed)
+    """
+
+    # ----- Build Staff + Assignments -----
+    staff_rows = []
+    for sid, info in optimized_roster["staff"].items():
+        staff_rows.append({
+            "staff_id": sid,
+            "name": info.get("name", ""),
+            "role": info.get("role", ""),
+            "specializations": ";".join(info.get("specializations", [])),
+            "fte": info.get("fte", 1.0),
+        })
+
+    staff_df = pd.DataFrame(staff_rows)
+    optimized_assignments_df = pd.DataFrame(optimized_roster["assignments"])
+
+    # ----- Build Summary -----
+    def pct_change(before, after):
+        if before == 0:
+            return "—" if after == 0 else "↑"
+        return f"{((after - before) / before) * 100:.1f}%"
+
+    summary_rows = [
+        {
+            "Metric": "Total Overtime Hours",
+            "Before": round(before_metrics["total_overtime_hours"], 2),
+            "After": round(after_metrics["total_overtime_hours"], 2),
+            "Change": pct_change(before_metrics["total_overtime_hours"], after_metrics["total_overtime_hours"]),
+        },
+        {
+            "Metric": "Burnout Score",
+            "Before": int(before_metrics["burnout_risk_score"]),
+            "After": int(after_metrics["burnout_risk_score"]),
+            "Change": pct_change(before_metrics["burnout_risk_score"], after_metrics["burnout_risk_score"]),
+        },
+        {
+            "Metric": "Skill Match Rate",
+            "Before": round(before_metrics["skill_match_rate"], 4),
+            "After": round(after_metrics["skill_match_rate"], 4),
+            "Change": pct_change(before_metrics["skill_match_rate"], after_metrics["skill_match_rate"]),
+        },
+        {
+            "Metric": "Assignments Changed",
+            "Before": "",
+            "After": "",
+            "Change": "",
+        },
+    ]
+
+    # ----- Build Changes sheet (by date+shift+slot) -----
+    orig_map = {(a["date"], a["shift"], int(a["slot"])): a["staff_id"]
+                for a in original_roster["assignments"]}
+    opt_map = {(a["date"], a["shift"], int(a["slot"])): a["staff_id"]
+               for a in optimized_roster["assignments"]}
+
+    changes = []
+    for key in sorted(orig_map.keys()):
+        old_sid = orig_map.get(key)
+        new_sid = opt_map.get(key)
+        if old_sid != new_sid:
+            d, sh, slot = key
+            changes.append({
+                "date": d,
+                "shift": sh,
+                "slot": slot,
+                "old_staff_id": old_sid,
+                "new_staff_id": new_sid,
+            })
+
+    # fill in assignments changed count in summary
+    summary_rows[-1]["Before"] = len(changes)
+    summary_df = pd.DataFrame(summary_rows)
+    changes_df = pd.DataFrame(changes)
+
+    # ----- Write Excel -----
+    with pd.ExcelWriter(out_path, engine="openpyxl") as writer:
+        staff_df.to_excel(writer, sheet_name="Staff", index=False)
+        optimized_assignments_df.to_excel(
+            writer, sheet_name="Assignments", index=False)
+        summary_df.to_excel(
+            writer, sheet_name="Optimization Summary", index=False)
+        changes_df.to_excel(writer, sheet_name="Changes", index=False)
