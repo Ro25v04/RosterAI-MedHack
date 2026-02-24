@@ -1,0 +1,44 @@
+const BASE = process.env.NEXT_PUBLIC_API_BASE_URL;
+
+if (!BASE) {
+  console.warn("NEXT_PUBLIC_API_BASE_URL is not set. Create web/.env.local");
+}
+
+export async function apiUploadRoster(file: File) {
+  const fd = new FormData();
+  fd.append("file", file);
+
+  const res = await fetch(`${BASE}/roster/upload`, {
+    method: "POST",
+    body: fd,
+  });
+
+  if (!res.ok) throw new Error(await res.text());
+  return res.json();
+}
+
+export async function apiOptimize(rosterId: string) {
+  const res = await fetch(`${BASE}/roster/${rosterId}/optimize`, { method: "POST" });
+  if (!res.ok) throw new Error(await res.text());
+  return res.json();
+}
+
+export async function apiPreview(rosterId: string, limit = 200) {
+  const res = await fetch(`${BASE}/roster/${rosterId}/preview?limit=${limit}`);
+  if (!res.ok) throw new Error(await res.text());
+  return res.json();
+}
+
+export async function apiChat(rosterId: string, message: string) {
+  const res = await fetch(`${BASE}/roster/${rosterId}/chat`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ message }),
+  });
+  if (!res.ok) throw new Error(await res.text());
+  return res.json();
+}
+
+export function downloadUrl(rosterId: string, format: "xlsx" | "csv" | "json" | "pdf") {
+  return `${BASE}/roster/${rosterId}/download?format=${format}`;
+}
