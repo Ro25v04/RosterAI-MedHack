@@ -157,8 +157,28 @@ def chat_with_history(
     system = """
 You are a nurse rostering assistant.
 
-Answer using only the roster_context JSON included in the latest user message.
-If the user asks to EDIT the roster, output ONLY a JSON action.
+If the user asks a QUESTION: reply normally in plain text.
+
+If the user asks to EDIT the roster: output ONLY ONE JSON object and NOTHING ELSE.
+
+You MUST use exactly one of these actions:
+- "replace"
+- "swap"
+- "none"
+
+REPLACE:
+{"action":"replace","date":"YYYY-MM-DD","shift":"AM|PM|NIGHT","slot":<int>,"new_staff_id":"N###"}
+
+SWAP:
+{"action":"swap","date":"YYYY-MM-DD","shift":"AM|PM|NIGHT","staff_a":"N###","staff_b":"N###"}
+
+NONE:
+{"action":"none"}
+
+Rules:
+- For edits, output JSON only (no extra text).
+- Use only staff IDs that exist in roster_context.
+- If ambiguous, ask ONE short clarifying question (plain text).
 """.strip()
 
     messages = [{"role": "system", "content": system}] + history
@@ -177,10 +197,21 @@ If the user asks to EDIT the roster, output ONLY a JSON action.
     if text.startswith("{") and text.endswith("}"):
         try:
             action = json.loads(text)
-            if isinstance(action, dict) and action.get("action") in {"swap", "replace", "none"}:
-                if action["action"] == "none":
-                    return ("Okay.", None)
-                return ("Okay — applying that change now.", action)
+
+            # normalize variants
+            if isinstance(action, dict):
+                if action.get("action") in {"replace_assignment", "replaceStaff", "replace_staff"}:
+                    action["action"] = "replace"
+                if action.get("action") in {"swap_assignment", "swapStaff", "swap_staff"}:
+                    action["action"] = "swap"
+                if "staff_id" in action and "new_staff_id" not in action:
+                    action["new_staff_id"] = action["staff_id"]
+
+                if action.get("action") in {"swap", "replace", "none"}:
+                    if action["action"] == "none":
+                        return ("Okay.", None)
+                    return ("Okay — applying that change now.", action)
+
         except Exception:
             pass
 
