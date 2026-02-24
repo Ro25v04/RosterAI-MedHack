@@ -1,78 +1,165 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 
-type NavItem = { href: string; label: string; icon?: string };
+type NavItem = { href: string; label: string; icon: React.ReactNode };
 
-const nav: NavItem[] = [
-  { href: "/", label: "Home", icon: "🏠" },
-  { href: "/admin", label: "Admin Console", icon: "🛠️" },
-  { href: "/nurse", label: "Nurse Preferences", icon: "🩺" },
-];
+// --- Simple inline icons (no deps) ---
+function IconHome(props: { active?: boolean }) {
+  return (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+      <path
+        d="M3 10.5L12 3l9 7.5V21a1 1 0 0 1-1 1h-5v-7H9v7H4a1 1 0 0 1-1-1V10.5Z"
+        stroke="currentColor"
+        strokeWidth="1.8"
+        opacity={props.active ? 1 : 0.9}
+      />
+    </svg>
+  );
+}
+function IconAdmin(props: { active?: boolean }) {
+  return (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+      <path
+        d="M12 2l7 4v6c0 5-3 9-7 10-4-1-7-5-7-10V6l7-4Z"
+        stroke="currentColor"
+        strokeWidth="1.8"
+        opacity={props.active ? 1 : 0.9}
+      />
+      <path
+        d="M9.5 12.2l1.7 1.7 3.3-3.6"
+        stroke="currentColor"
+        strokeWidth="1.8"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        opacity={props.active ? 1 : 0.9}
+      />
+    </svg>
+  );
+}
+function IconNurse(props: { active?: boolean }) {
+  return (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+      <path
+        d="M7 21v-2a4 4 0 0 1 4-4h2a4 4 0 0 1 4 4v2"
+        stroke="currentColor"
+        strokeWidth="1.8"
+        opacity={props.active ? 1 : 0.9}
+      />
+      <path
+        d="M12 12a4 4 0 1 0-4-4 4 4 0 0 0 4 4Z"
+        stroke="currentColor"
+        strokeWidth="1.8"
+        opacity={props.active ? 1 : 0.9}
+      />
+      <path
+        d="M12 3v4M10 5h4"
+        stroke="currentColor"
+        strokeWidth="1.8"
+        strokeLinecap="round"
+        opacity={props.active ? 1 : 0.9}
+      />
+    </svg>
+  );
+}
 
 export default function SidebarShell({
   children,
-  brand = "MedHack Rostering",
 }: {
   children: React.ReactNode;
-  brand?: string;
 }) {
   const pathname = usePathname();
   const [collapsed, setCollapsed] = useState(false);
 
+  // Theme (match your logo: soft blue accent, clean dark background)
+  const theme = useMemo(
+    () => ({
+      bg: "#0B0F14",
+      panel: "rgba(255,255,255,0.04)",
+      panel2: "rgba(255,255,255,0.06)",
+      border: "rgba(255,255,255,0.08)",
+      borderStrong: "rgba(255,255,255,0.12)",
+      text: "rgba(255,255,255,0.92)",
+      muted: "rgba(255,255,255,0.68)",
+      accent: "#8CC9FF", // logo-ish light blue
+      accent2: "#5FB4FF",
+      shadow: "0 12px 35px rgba(0,0,0,0.35)",
+    }),
+    []
+  );
+
+  const nav: NavItem[] = useMemo(() => {
+    const isHome = pathname === "/";
+    const isAdmin = pathname === "/admin";
+    const isNurse = pathname === "/nurse";
+    return [
+      { href: "/", label: "Home", icon: <IconHome active={isHome} /> },
+      { href: "/admin", label: "Admin Console", icon: <IconAdmin active={isAdmin} /> },
+      { href: "/nurse", label: "Nurse Preferences", icon: <IconNurse active={isNurse} /> },
+    ];
+  }, [pathname]);
+
+  const title =
+    pathname === "/"
+      ? "Home"
+      : pathname === "/admin"
+        ? "Admin Console"
+        : pathname === "/nurse"
+          ? "Nurse Preferences"
+          : "OptiNUM";
+
   return (
-    <div style={{ minHeight: "100vh", background: "#0b0b0b", color: "#fff" }}>
+    <div style={{ minHeight: "100vh", background: theme.bg, color: theme.text }}>
       <div style={{ display: "flex", minHeight: "100vh" }}>
         {/* Sidebar */}
         <aside
           style={{
-            width: collapsed ? 72 : 260,
+            width: collapsed ? 84 : 300,
             transition: "width 180ms ease",
-            borderRight: "1px solid rgba(255,255,255,0.08)",
-            background: "rgba(255,255,255,0.02)",
+            borderRight: `1px solid ${theme.border}`,
+            background: theme.panel,
             padding: 16,
+            position: "relative",
           }}
         >
-          {/* Brand */}
+          {/* Brand row (logo only) */}
           <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-            {/* Replace with your logo later */}
             <div
               style={{
-                width: 40,
-                height: 40,
-                borderRadius: 12,
-                background: "rgba(255,255,255,0.08)",
-                display: "grid",
-                placeItems: "center",
-                fontWeight: 800,
+                width: collapsed ? 44 : 220,
+                height: 56,
+                position: "relative",
+                flex: "0 0 auto",
+                filter: "drop-shadow(0 10px 22px rgba(0,0,0,0.25))",
               }}
+              title="OptiNUM"
             >
-              M
+              <Image
+                src="/logo.png"
+                alt="OptiNUM"
+                fill
+                priority
+                style={{ objectFit: "contain" }}
+              />
             </div>
-
-            {!collapsed && (
-              <div style={{ lineHeight: 1.1 }}>
-                <div style={{ fontWeight: 800 }}>{brand}</div>
-                <div style={{ opacity: 0.7, fontSize: 12 }}>Hackathon Demo</div>
-              </div>
-            )}
 
             <button
               onClick={() => setCollapsed((v) => !v)}
               style={{
                 marginLeft: "auto",
-                border: "1px solid rgba(255,255,255,0.12)",
+                border: `1px solid ${theme.borderStrong}`,
                 background: "transparent",
-                color: "white",
-                borderRadius: 10,
-                padding: "6px 10px",
+                color: theme.text,
+                borderRadius: 12,
+                padding: "8px 10px",
                 cursor: "pointer",
               }}
               title="Toggle sidebar"
             >
-              {collapsed ? "➡️" : "⬅️"}
+              {collapsed ? "→" : "←"}
             </button>
           </div>
 
@@ -88,23 +175,42 @@ export default function SidebarShell({
                     display: "flex",
                     alignItems: "center",
                     gap: 10,
-                    padding: "10px 12px",
-                    borderRadius: 12,
+                    padding: collapsed ? "10px 10px" : "10px 12px",
+                    borderRadius: 14,
                     textDecoration: "none",
-                    color: "white",
-                    background: active
-                      ? "rgba(255,255,255,0.10)"
-                      : "transparent",
-                    border: active
-                      ? "1px solid rgba(255,255,255,0.14)"
-                      : "1px solid rgba(255,255,255,0.08)",
+                    color: theme.text,
+                    background: active ? theme.panel2 : "transparent",
+                    border: `1px solid ${active ? theme.borderStrong : theme.border}`,
+                    boxShadow: active ? "0 8px 22px rgba(0,0,0,0.25)" : "none",
                   }}
                 >
-                  <span style={{ width: 22, textAlign: "center" }}>
-                    {item.icon ?? "•"}
+                  <span
+                    style={{
+                      width: 24,
+                      height: 24,
+                      display: "grid",
+                      placeItems: "center",
+                      color: active ? theme.accent : theme.text,
+                    }}
+                  >
+                    {item.icon}
                   </span>
                   {!collapsed && (
-                    <span style={{ fontWeight: 600 }}>{item.label}</span>
+                    <span style={{ fontWeight: 650, letterSpacing: 0.1 }}>
+                      {item.label}
+                    </span>
+                  )}
+                  {!collapsed && active && (
+                    <span
+                      style={{
+                        marginLeft: "auto",
+                        width: 8,
+                        height: 8,
+                        borderRadius: 999,
+                        background: theme.accent,
+                        boxShadow: `0 0 0 4px rgba(140,201,255,0.12)`,
+                      }}
+                    />
                   )}
                 </Link>
               );
@@ -118,11 +224,27 @@ export default function SidebarShell({
               bottom: 16,
               left: 16,
               right: 16,
-              opacity: 0.7,
+              color: theme.muted,
               fontSize: 12,
             }}
           >
-            {!collapsed ? "Upload → Optimize → Edit via AI → Export" : "⏱️"}
+            {!collapsed ? (
+              <div
+                style={{
+                  border: `1px solid ${theme.border}`,
+                  background: "rgba(255,255,255,0.03)",
+                  borderRadius: 14,
+                  padding: 12,
+                }}
+              >
+                <div style={{ fontWeight: 700, color: theme.text, marginBottom: 6 }}>
+                  Quick flow
+                </div>
+                Upload → Optimise → AI Edit → Export
+              </div>
+            ) : (
+              "⏱"
+            )}
           </div>
         </aside>
 
@@ -131,40 +253,50 @@ export default function SidebarShell({
           {/* Top bar */}
           <div
             style={{
-              height: 56,
+              height: 60,
               display: "flex",
               alignItems: "center",
               justifyContent: "space-between",
               padding: "0 18px",
-              borderBottom: "1px solid rgba(255,255,255,0.08)",
-              background: "rgba(255,255,255,0.02)",
+              borderBottom: `1px solid ${theme.border}`,
+              background: theme.panel,
+              position: "sticky",
+              top: 0,
+              zIndex: 10,
+              backdropFilter: "blur(10px)",
             }}
           >
-            <div style={{ fontWeight: 700 }}>
-              {pathname === "/"
-                ? "Home"
-                : pathname === "/admin"
-                ? "Admin Console"
-                : pathname === "/nurse"
-                ? "Nurse Preferences"
-                : "MedHack"}
-            </div>
-            <div style={{ display: "flex", gap: 10 }}>
+            <div style={{ fontWeight: 800, letterSpacing: 0.2 }}>{title}</div>
+
+            <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
               <span
                 style={{
                   fontSize: 12,
-                  padding: "6px 10px",
-                  border: "1px solid rgba(255,255,255,0.12)",
+                  padding: "7px 12px",
+                  border: `1px solid ${theme.borderStrong}`,
                   borderRadius: 999,
-                  opacity: 0.9,
+                  color: theme.text,
+                  background: "rgba(255,255,255,0.03)",
                 }}
               >
                 Local Demo
               </span>
+              <span
+                style={{
+                  fontSize: 12,
+                  padding: "7px 12px",
+                  borderRadius: 999,
+                  color: "#06111F",
+                  background: `linear-gradient(135deg, ${theme.accent}, ${theme.accent2})`,
+                  fontWeight: 800,
+                }}
+              >
+                Ready
+              </span>
             </div>
           </div>
 
-          <div style={{ padding: 18 }}>{children}</div>
+          <div style={{ padding: 22 }}>{children}</div>
         </main>
       </div>
     </div>

@@ -1,25 +1,65 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useDropzone } from "react-dropzone";
-import { apiUploadRoster, apiOptimize, apiPreview, apiChat, downloadUrl } from "../../lib/api";
+import { apiUploadRoster, apiOptimize, apiChat, downloadUrl } from "../../lib/api";
 
-type Assignment = {
-  date: string;
-  shift: string;
-  slot: number;
-  staff_id: string;
+type ChatItem = { role: "user" | "bot"; text: string };
+
+type SheetTable = {
+  sheet: string;
+  columns: string[];
+  rows: any[];
+  total_rows: number;
 };
+
+type SheetPreviewResponse = {
+  roster_id: string;
+  sheet_names: string[];
+  active_sheet: string;
+  preview: any;
+  metrics: any;
+  table: SheetTable;
+};
+
+const LIMIT = 200;
 
 export default function AdminPage() {
   const [rosterId, setRosterId] = useState<string | null>(null);
+
+  // Data from backend
+  const [sheetNames, setSheetNames] = useState<string[]>([]);
+  const [activeSheet, setActiveSheet] = useState<string>("Assignments");
   const [preview, setPreview] = useState<any | null>(null);
   const [metrics, setMetrics] = useState<any | null>(null);
+  const [table, setTable] = useState<SheetTable | null>(null);
+
+  // UI state
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // Chat
   const [chatMsg, setChatMsg] = useState("");
-  const [chatLog, setChatLog] = useState<{ role: "user" | "bot"; text: string }[]>([]);
+  const [chatLog, setChatLog] = useState<ChatItem[]>([]);
+
+  async function fetchSheet(roster_id: string, sheet: string) {
+    // Calls the new endpoint directly
+    const BASE = process.env.NEXT_PUBLIC_API_BASE_URL;
+    if (!BASE) throw new Error("NEXT_PUBLIC_API_BASE_URL not set");
+
+    const url = `${BASE}/roster/${roster_id}/sheet_preview?sheet=${encodeURIComponent(sheet)}&limit=${LIMIT}`;
+    const res = await fetch(url);
+    if (!res.ok) throw new Error(await res.text());
+    const data = (await res.json()) as SheetPreviewResponse;
+
+    setSheetNames(data.sheet_names || []);
+    setActiveSheet(data.active_sheet || sheet);
+    setPreview(data.preview);
+    setMetrics(data.metrics);
+    setTable(data.table);
+
+    return data;
+  }
 
   const onDrop = async (accepted: File[]) => {
     setError(null);
@@ -29,10 +69,22 @@ export default function AdminPage() {
     setBusy(true);
     try {
       const data = await apiUploadRoster(file);
-      setRosterId(data.roster_id);
-      setPreview(data.preview);
-      setMetrics(data.metrics);
+
+      // Expecting backend to return at least roster_id
+      const rid = data.roster_id as string;
+      setRosterId(rid);
+
+      // Reset chat
       setChatLog([]);
+      setChatMsg("");
+
+      // If backend returns these (nice), use them; otherwise fetch
+      const initialSheet = (data.active_sheet as string) || "Assignments";
+      setActiveSheet(initialSheet);
+
+      // If upload already returns preview/metrics/table, you can set them here;
+      // but safest is to load from sheet_preview so tabs always work.
+      await fetchSheet(rid, initialSheet);
     } catch (e: any) {
       setError(e?.message || "Upload failed");
     } finally {
@@ -51,9 +103,15 @@ export default function AdminPage() {
 
   async function refresh() {
     if (!rosterId) return;
-    const data = await apiPreview(rosterId, 200);
-    setPreview(data.preview);
-    setMetrics(data.metrics);
+    setBusy(true);
+    setError(null);
+    try {
+      await fetchSheet(rosterId, activeSheet);
+    } catch (e: any) {
+      setError(e?.message || "Refresh failed");
+    } finally {
+      setBusy(false);
+    }
   }
 
   async function runOptimize() {
@@ -62,9 +120,23 @@ export default function AdminPage() {
     setError(null);
     try {
       await apiOptimize(rosterId);
-      await refresh();
+      // After optimize, backend should expose extra sheets
+      await fetchSheet(rosterId, activeSheet);
     } catch (e: any) {
       setError(e?.message || "Optimize failed");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function handleSwitchSheet(sheet: string) {
+    if (!rosterId) return;
+    setBusy(true);
+    setError(null);
+    try {
+      await fetchSheet(rosterId, sheet);
+    } catch (e: any) {
+      setError(e?.message || "Failed to switch sheet");
     } finally {
       setBusy(false);
     }
@@ -83,16 +155,36 @@ export default function AdminPage() {
       const res = await apiChat(rosterId, msg);
       setChatLog((p) => [...p, { role: "bot", text: res.reply }]);
 
+      // If an edit was applied, always re-fetch current sheet so preview is truly updated
       if (res.type === "edit_applied") {
-        setPreview(res.preview);
-        setMetrics(res.metrics);
+        await fetchSheet(rosterId, activeSheet);
       }
     } catch (e: any) {
       setError(e?.message || "Chat failed");
     }
   }
 
-  const rows: Assignment[] = useMemo(() => preview?.assignments || [], [preview]);
+  // Pretty metrics pills
+  const metricPills = useMemo(() => {
+    if (!preview) return null;
+    return (
+      <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 8 }}>
+        {"assignment_count" in preview && <span style={pill}>Assignments: {preview.assignment_count}</span>}
+        {"staff_count" in preview && <span style={pill}>Staff: {preview.staff_count}</span>}
+        {metrics && (
+          <>
+            {"total_overtime_hours" in metrics && (
+              <span style={pill}>Overtime: {Number(metrics.total_overtime_hours).toFixed(2)}</span>
+            )}
+            {"burnout_risk_score" in metrics && <span style={pill}>Burnout: {metrics.burnout_risk_score}</span>}
+            {"skill_match_rate" in metrics && (
+              <span style={pill}>Skill match: {Number(metrics.skill_match_rate).toFixed(3)}</span>
+            )}
+          </>
+        )}
+      </div>
+    );
+  }, [preview, metrics]);
 
   return (
     <div style={{ minHeight: "100vh", background: "#0a0a0a", color: "#fff" }}>
@@ -105,10 +197,18 @@ export default function AdminPage() {
 
           {rosterId && (
             <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-              <a style={btnGhost} href={downloadUrl(rosterId, "xlsx")}>XLSX</a>
-              <a style={btnGhost} href={downloadUrl(rosterId, "csv")}>CSV</a>
-              <a style={btnGhost} href={downloadUrl(rosterId, "json")}>JSON</a>
-              <a style={btnGhost} href={downloadUrl(rosterId, "pdf")}>PDF</a>
+              <a style={btnGhost} href={downloadUrl(rosterId, "xlsx")}>
+                XLSX
+              </a>
+              <a style={btnGhost} href={downloadUrl(rosterId, "csv")}>
+                CSV
+              </a>
+              <a style={btnGhost} href={downloadUrl(rosterId, "json")}>
+                JSON
+              </a>
+              <a style={btnGhost} href={downloadUrl(rosterId, "pdf")}>
+                PDF
+              </a>
             </div>
           )}
         </div>
@@ -143,63 +243,110 @@ export default function AdminPage() {
               </div>
 
               {rosterId && (
-                <div style={{ marginTop: 12, display: "flex", gap: 10 }}>
+                <div style={{ marginTop: 12, display: "flex", gap: 10, flexWrap: "wrap" }}>
                   <button style={btnPrimary} disabled={busy} onClick={runOptimize}>
                     Optimize roster
                   </button>
                   <button style={btnSecondary} disabled={busy} onClick={refresh}>
                     Refresh preview
                   </button>
+
+                  <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 8 }}>
+                    <span style={{ color: "#a3a3a3", fontSize: 12 }}>Sheet</span>
+                    <select
+                      value={activeSheet}
+                      onChange={(e) => handleSwitchSheet(e.target.value)}
+                      style={{
+                        borderRadius: 12,
+                        border: "1px solid #2a2a2a",
+                        background: "#171717",
+                        color: "#fff",
+                        padding: "10px 12px",
+                        fontSize: 13,
+                        outline: "none",
+                      }}
+                      disabled={busy || sheetNames.length === 0}
+                    >
+                      {sheetNames.map((s) => (
+                        <option key={s} value={s}>
+                          {s}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
                 </div>
               )}
             </div>
 
             <div style={card}>
-              <h2 style={h2}>Preview</h2>
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, flexWrap: "wrap" }}>
+                <h2 style={h2}>Preview</h2>
 
-              {!preview ? (
+                {/* Tabs (optional visual, still uses the same switch function) */}
+                {rosterId && sheetNames.length > 0 && (
+                  <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                    {sheetNames.map((s) => (
+                      <button
+                        key={s}
+                        onClick={() => handleSwitchSheet(s)}
+                        disabled={busy}
+                        style={{
+                          ...tabBtn,
+                          background: s === activeSheet ? "#ffffff" : "#171717",
+                          color: s === activeSheet ? "#000" : "#fff",
+                          border: s === activeSheet ? "1px solid #fff" : "1px solid #2a2a2a",
+                        }}
+                      >
+                        {s}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {!preview || !table ? (
                 <p style={{ color: "#a3a3a3" }}>Upload a roster to see preview.</p>
               ) : (
                 <>
-                  <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 8 }}>
-                    <span style={pill}>Assignments: {preview.assignment_count}</span>
-                    <span style={pill}>Staff: {preview.staff_count}</span>
-                    {metrics && (
-                      <>
-                        {"total_overtime_hours" in metrics && <span style={pill}>Overtime: {Number(metrics.total_overtime_hours).toFixed(2)}</span>}
-                        {"burnout_risk_score" in metrics && <span style={pill}>Burnout: {metrics.burnout_risk_score}</span>}
-                        {"skill_match_rate" in metrics && <span style={pill}>Skill match: {Number(metrics.skill_match_rate).toFixed(3)}</span>}
-                      </>
-                    )}
-                  </div>
+                  {metricPills}
 
                   <div style={{ marginTop: 12, border: "1px solid #262626", borderRadius: 12, overflow: "hidden" }}>
                     <div style={{ maxHeight: 420, overflow: "auto" }}>
                       <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
                         <thead style={{ position: "sticky", top: 0, background: "#0f0f0f" }}>
                           <tr style={{ color: "#a3a3a3" }}>
-                            <th style={th}>Date</th>
-                            <th style={th}>Shift</th>
-                            <th style={th}>Slot</th>
-                            <th style={th}>Staff</th>
+                            {table.columns.map((c) => (
+                              <th key={c} style={th}>
+                                {c}
+                              </th>
+                            ))}
                           </tr>
                         </thead>
                         <tbody>
-                          {rows.map((r, idx) => (
-                            <tr key={idx} style={{ borderTop: "1px solid #262626" }}>
-                              <td style={td}>{r.date}</td>
-                              <td style={td}>{r.shift}</td>
-                              <td style={td}>{r.slot}</td>
-                              <td style={td}>{r.staff_id}</td>
+                          {table.rows.length === 0 ? (
+                            <tr style={{ borderTop: "1px solid #262626" }}>
+                              <td style={td} colSpan={Math.max(1, table.columns.length)}>
+                                <span style={{ color: "#a3a3a3" }}>No rows in this sheet.</span>
+                              </td>
                             </tr>
-                          ))}
+                          ) : (
+                            table.rows.map((r, idx) => (
+                              <tr key={idx} style={{ borderTop: "1px solid #262626" }}>
+                                {table.columns.map((c) => (
+                                  <td key={c} style={td}>
+                                    {formatCell(r?.[c])}
+                                  </td>
+                                ))}
+                              </tr>
+                            ))
+                          )}
                         </tbody>
                       </table>
                     </div>
                   </div>
 
                   <div style={{ marginTop: 6, fontSize: 12, color: "#737373" }}>
-                    Preview shows first {preview.preview_limit} rows.
+                    Showing first {LIMIT} rows ({activeSheet}). Total rows: {table.total_rows ?? table.rows.length}.
                   </div>
                 </>
               )}
@@ -211,12 +358,20 @@ export default function AdminPage() {
             <h2 style={h2}>AI Assistant</h2>
             <div style={{ color: "#a3a3a3", fontSize: 13 }}>
               Ask questions or request edits like:
-              <div style={{ marginTop: 6, color: "#d4d4d4" }}>
-                “Swap N001 and N002 on 2025-03-05 NIGHT”
-              </div>
+              <div style={{ marginTop: 6, color: "#d4d4d4" }}>“Swap N001 and N002 on 2025-03-05 NIGHT”</div>
             </div>
 
-            <div style={{ marginTop: 12, flex: 1, border: "1px solid #262626", borderRadius: 12, background: "#0f0f0f", padding: 12, overflow: "auto" }}>
+            <div
+              style={{
+                marginTop: 12,
+                flex: 1,
+                border: "1px solid #262626",
+                borderRadius: 12,
+                background: "#0f0f0f",
+                padding: 12,
+                overflow: "auto",
+              }}
+            >
               {chatLog.length === 0 ? (
                 <div style={{ color: "#737373", fontSize: 13 }}>No messages yet.</div>
               ) : (
@@ -246,7 +401,7 @@ export default function AdminPage() {
                 value={chatMsg}
                 onChange={(e) => setChatMsg(e.target.value)}
                 placeholder={rosterId ? "Type a question or edit…" : "Upload roster first…"}
-                disabled={!rosterId}
+                disabled={!rosterId || busy}
                 style={{
                   width: "100%",
                   borderRadius: 12,
@@ -261,7 +416,7 @@ export default function AdminPage() {
                   if (e.key === "Enter") sendChat();
                 }}
               />
-              <button style={btnPrimary} disabled={!rosterId} onClick={sendChat}>
+              <button style={btnPrimary} disabled={!rosterId || busy} onClick={sendChat}>
                 Send
               </button>
             </div>
@@ -274,6 +429,12 @@ export default function AdminPage() {
       </div>
     </div>
   );
+}
+
+function formatCell(v: any) {
+  if (v === null || v === undefined) return "";
+  if (typeof v === "object") return JSON.stringify(v);
+  return String(v);
 }
 
 const card: React.CSSProperties = {
@@ -328,5 +489,22 @@ const btnGhost: React.CSSProperties = {
   textDecoration: "none",
 };
 
-const th: React.CSSProperties = { padding: "10px 10px", textAlign: "left" };
-const td: React.CSSProperties = { padding: "10px 10px" };
+const tabBtn: React.CSSProperties = {
+  padding: "8px 10px",
+  borderRadius: 12,
+  fontSize: 13,
+  fontWeight: 700,
+  cursor: "pointer",
+};
+
+const th: React.CSSProperties = {
+  padding: "10px 10px",
+  textAlign: "left",
+  borderBottom: "1px solid #262626",
+  whiteSpace: "nowrap",
+};
+
+const td: React.CSSProperties = {
+  padding: "10px 10px",
+  whiteSpace: "nowrap",
+};

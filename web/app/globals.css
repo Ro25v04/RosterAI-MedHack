@@ -1,6 +1,27 @@
-/* global styles (optional) */
-html,
-body {
-  padding: 0;
-  margin: 0;
+:root{
+  --bg: #0B1220;
+  --panel: #101B2D;
+  --panel-2: #0F1A2B;
+  --border: #22304A;
+
+  --text: #E6EEF8;
+  --muted: #93A4BD;
+
+  --accent: #9CCBFF;
+  --accent-2: #7FB8FF;
+
+  --danger: #FF6B6B;
+  --success: #4ADE80;
+}
+
+html, body{
+  height: 100%;
+}
+
+body{
+  background: radial-gradient(1200px 600px at 20% 0%, rgba(156,203,255,0.12), transparent 60%),
+              radial-gradient(900px 500px at 90% 10%, rgba(156,203,255,0.08), transparent 55%),
+              var(--bg);
+  color: var(--text);
+  font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial, "Apple Color Emoji","Segoe UI Emoji";
 }

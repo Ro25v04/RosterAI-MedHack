@@ -15,23 +15,40 @@ def _split_specs(x) -> List[str]:
         return []
     return [p.strip() for p in s.split(";") if p.strip()]
 
+def load_roster_from_excel(path: str, sheet_name: str | None = None):
+    """
+    Loads roster from Excel.
 
-def load_roster_from_excel(path: str) -> Dict[str, Any]:
+    Expected formats:
+    - Staff sheet is ALWAYS named: "Staff"
+    - Assignments sheet is either:
+        - "Assignments" (default)
+        - OR any other sheet name passed in via sheet_name
+          (useful when workbook has multiple assignment sheets)
+    """
+
     xl = pd.ExcelFile(path)
 
-    if "Staff" not in xl.sheet_names or "Assignments" not in xl.sheet_names:
-        raise ValueError(
-            "Excel must have sheets named exactly: Staff and Assignments")
+    staff_sheet = "Staff"
+    assignments_sheet = sheet_name or "Assignments"
 
-    staff_df = pd.read_excel(xl, sheet_name="Staff")
-    asg_df = pd.read_excel(xl, sheet_name="Assignments")
+    if staff_sheet not in xl.sheet_names:
+        raise ValueError("Excel must contain a sheet named exactly: Staff")
+
+    if assignments_sheet not in xl.sheet_names:
+        raise ValueError(
+            f"Excel must contain an assignments sheet named '{assignments_sheet}'. "
+            f"Available sheets: {xl.sheet_names}"
+        )
+
+    staff_df = pd.read_excel(xl, sheet_name=staff_sheet)
+    asg_df = pd.read_excel(xl, sheet_name=assignments_sheet)
 
     # ---- Validate Staff ----
     staff_required = {"staff_id", "name", "role", "specializations", "fte"}
     missing_staff = staff_required - set(staff_df.columns)
     if missing_staff:
-        raise ValueError(
-            f"Staff sheet missing columns: {sorted(missing_staff)}")
+        raise ValueError(f"Staff sheet missing columns: {sorted(missing_staff)}")
 
     staff: Dict[str, Dict[str, Any]] = {}
     for _, r in staff_df.iterrows():
@@ -61,7 +78,8 @@ def load_roster_from_excel(path: str) -> Dict[str, Any]:
     missing_asg = asg_required - set(asg_df.columns)
     if missing_asg:
         raise ValueError(
-            f"Assignments sheet missing columns: {sorted(missing_asg)}")
+            f"Assignments sheet '{assignments_sheet}' missing columns: {sorted(missing_asg)}"
+        )
 
     assignments: List[Dict[str, Any]] = []
     for _, r in asg_df.iterrows():
@@ -75,12 +93,12 @@ def load_roster_from_excel(path: str) -> Dict[str, Any]:
 
         max_slot = COVERAGE_REQUIREMENTS[shift] - 1
         if slot < 0 or slot > max_slot:
-            raise ValueError(
-                f"Invalid slot {slot} for {shift}. Must be 0..{max_slot}")
+            raise ValueError(f"Invalid slot {slot} for {shift}. Must be 0..{max_slot}")
 
         if sid not in staff:
             raise ValueError(
-                f"Unknown staff_id '{sid}' in Assignments (not in Staff sheet).")
+                f"Unknown staff_id '{sid}' in '{assignments_sheet}' (not in Staff sheet)."
+            )
 
         assignments.append({
             "date": date_str,
@@ -90,7 +108,7 @@ def load_roster_from_excel(path: str) -> Dict[str, Any]:
         })
 
     if not assignments:
-        raise ValueError("Assignments sheet is empty.")
+        raise ValueError(f"Assignments sheet '{assignments_sheet}' is empty.")
 
     dates = sorted({a["date"] for a in assignments})
     return {
@@ -98,6 +116,7 @@ def load_roster_from_excel(path: str) -> Dict[str, Any]:
         "assignments": assignments,
         "start_date": dates[0],
         "end_date": dates[-1],
+        "active_sheet": assignments_sheet,  # helpful for UI
     }
 
 
@@ -198,3 +217,8 @@ def save_optimized_roster_to_excel(
         summary_df.to_excel(
             writer, sheet_name="Optimization Summary", index=False)
         change_log_df.to_excel(writer, sheet_name="Change Log", index=False)
+
+
+def list_excel_sheets(path: str) -> List[str]:
+    xl = pd.ExcelFile(path)
+    return xl.sheet_names
