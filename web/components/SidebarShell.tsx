@@ -117,7 +117,7 @@ export default function SidebarShell({
         {/* Sidebar */}
         <aside
           style={{
-            width: collapsed ? 84 : 300,
+            width: collapsed ? 92 : 340,
             transition: "width 180ms ease",
             borderRight: `1px solid ${theme.border}`,
             background: theme.panel,
@@ -129,8 +129,8 @@ export default function SidebarShell({
           <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
             <div
               style={{
-                width: collapsed ? 44 : 220,
-                height: 56,
+                width: collapsed ? 56 : 270,
+                height: 70,
                 position: "relative",
                 flex: "0 0 auto",
                 filter: "drop-shadow(0 10px 22px rgba(0,0,0,0.25))",
