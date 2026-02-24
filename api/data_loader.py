@@ -127,6 +127,7 @@ def save_optimized_roster_to_excel(
     before_metrics: Dict[str, Any],
     after_metrics: Dict[str, Any],
     out_path: str,
+    change_log: List[Dict[str, Any]] | None = None,
 ):
     """
     Saves optimized roster to Excel with:
@@ -176,37 +177,18 @@ def save_optimized_roster_to_excel(
             "Change": pct_change(before_metrics["skill_match_rate"], after_metrics["skill_match_rate"]),
         },
         {
-            "Metric": "Assignments Changed",
+            "Metric": "Edit Actions Applied",
             "Before": "",
-            "After": "",
+            "After": len(change_log or []),
             "Change": "",
         },
     ]
 
-    # ----- Build Changes sheet (by date+shift+slot) -----
-    orig_map = {(a["date"], a["shift"], int(a["slot"])): a["staff_id"]
-                for a in original_roster["assignments"]}
-    opt_map = {(a["date"], a["shift"], int(a["slot"])): a["staff_id"]
-               for a in optimized_roster["assignments"]}
-
-    changes = []
-    for key in sorted(orig_map.keys()):
-        old_sid = orig_map.get(key)
-        new_sid = opt_map.get(key)
-        if old_sid != new_sid:
-            d, sh, slot = key
-            changes.append({
-                "date": d,
-                "shift": sh,
-                "slot": slot,
-                "old_staff_id": old_sid,
-                "new_staff_id": new_sid,
-            })
-
     # fill in assignments changed count in summary
-    summary_rows[-1]["Before"] = len(changes)
+    summary_rows[-1]["Before"] = ""
     summary_df = pd.DataFrame(summary_rows)
-    changes_df = pd.DataFrame(changes)
+
+    change_log_df = pd.DataFrame(change_log or [])
 
     # ----- Write Excel -----
     with pd.ExcelWriter(out_path, engine="openpyxl") as writer:
@@ -215,4 +197,4 @@ def save_optimized_roster_to_excel(
             writer, sheet_name="Assignments", index=False)
         summary_df.to_excel(
             writer, sheet_name="Optimization Summary", index=False)
-        changes_df.to_excel(writer, sheet_name="Changes", index=False)
+        change_log_df.to_excel(writer, sheet_name="Change Log", index=False)
