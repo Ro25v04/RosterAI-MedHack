@@ -510,13 +510,13 @@ function StepChip(props: { label: string; active?: boolean; done?: boolean }) {
         border: done
           ? "1px solid rgba(74,222,128,0.35)"
           : active
-          ? "1px solid rgba(156,203,255,0.35)"
-          : "1px solid var(--border)",
+            ? "1px solid rgba(156,203,255,0.35)"
+            : "1px solid var(--border)",
         background: done
           ? "rgba(74,222,128,0.10)"
           : active
-          ? "rgba(156,203,255,0.12)"
-          : "rgba(255,255,255,0.03)",
+            ? "rgba(156,203,255,0.12)"
+            : "rgba(255,255,255,0.03)",
         color: "var(--text)",
       }}
     >
@@ -691,4 +691,22 @@ const alert: React.CSSProperties = {
   background: "rgba(255,107,107,0.10)",
   padding: 12,
   borderRadius: 16,
+};
+
+
+const th: React.CSSProperties = {
+  padding: "10px 10px",
+  textAlign: "left",
+  borderBottom: "1px solid var(--border)",
+  whiteSpace: "nowrap",
+  fontWeight: 900,
+  fontSize: 12,
+};
+
+const td: React.CSSProperties = {
+  padding: "10px 10px",
+  borderBottom: "1px solid var(--border)",
+  whiteSpace: "nowrap",
+  color: "var(--text)",
+  fontSize: 13,
 };
