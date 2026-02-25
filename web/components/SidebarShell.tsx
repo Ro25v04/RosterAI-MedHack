@@ -66,11 +66,7 @@ function IconNurse(props: { active?: boolean }) {
   );
 }
 
-export default function SidebarShell({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
+export default function SidebarShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const [collapsed, setCollapsed] = useState(false);
 
@@ -84,7 +80,7 @@ export default function SidebarShell({
       borderStrong: "rgba(255,255,255,0.12)",
       text: "rgba(255,255,255,0.92)",
       muted: "rgba(255,255,255,0.68)",
-      accent: "#8CC9FF", // logo-ish light blue
+      accent: "#8CC9FF",
       accent2: "#5FB4FF",
       shadow: "0 12px 35px rgba(0,0,0,0.35)",
     }),
@@ -117,7 +113,7 @@ export default function SidebarShell({
         {/* Sidebar */}
         <aside
           style={{
-            width: collapsed ? 92 : 340,
+            width: collapsed ? 92 : 360,
             transition: "width 180ms ease",
             borderRight: `1px solid ${theme.border}`,
             background: theme.panel,
@@ -125,42 +121,54 @@ export default function SidebarShell({
             position: "relative",
           }}
         >
-          {/* Brand row (logo only) */}
-          <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+          {/* Floating toggle (always reachable) */}
+          <button
+            onClick={() => setCollapsed((v) => !v)}
+            style={{
+              position: "absolute",
+              top: 24,
+              right: -14,
+              width: 28,
+              height: 28,
+              borderRadius: 999,
+              border: `1px solid ${theme.borderStrong}`,
+              background: theme.panel2,
+              color: theme.text,
+              cursor: "pointer",
+              display: "grid",
+              placeItems: "center",
+              boxShadow: theme.shadow,
+              zIndex: 20,
+              userSelect: "none",
+            }}
+            title="Toggle sidebar"
+            aria-label="Toggle sidebar"
+          >
+            {collapsed ? "→" : "←"}
+          </button>
+
+          {/* Brand (full logo expanded, mascot collapsed) */}
+          <div style={{ display: "flex", justifyContent: collapsed ? "center" : "flex-start" }}>
             <div
               style={{
-                width: collapsed ? 56 : 270,
-                height: 70,
+                width: collapsed ? 56 : 200,
+                height: collapsed ? 56 : 70,
                 position: "relative",
                 flex: "0 0 auto",
+                transition: "all 180ms ease",
                 filter: "drop-shadow(0 10px 22px rgba(0,0,0,0.25))",
+                marginTop: 6,
               }}
               title="OptiNUM"
             >
               <Image
-                src="/logo.png"
+                src={collapsed ? "/logo-mascot.png" : "/logo-new.png"}
                 alt="OptiNUM"
                 fill
                 priority
                 style={{ objectFit: "contain" }}
               />
             </div>
-
-            <button
-              onClick={() => setCollapsed((v) => !v)}
-              style={{
-                marginLeft: "auto",
-                border: `1px solid ${theme.borderStrong}`,
-                background: "transparent",
-                color: theme.text,
-                borderRadius: 12,
-                padding: "8px 10px",
-                cursor: "pointer",
-              }}
-              title="Toggle sidebar"
-            >
-              {collapsed ? "→" : "←"}
-            </button>
           </div>
 
           {/* Nav */}
@@ -174,8 +182,9 @@ export default function SidebarShell({
                   style={{
                     display: "flex",
                     alignItems: "center",
+                    justifyContent: collapsed ? "center" : "flex-start",
                     gap: 10,
-                    padding: collapsed ? "10px 10px" : "10px 12px",
+                    padding: collapsed ? "14px 0" : "10px 12px",
                     borderRadius: 14,
                     textDecoration: "none",
                     color: theme.text,
@@ -183,6 +192,8 @@ export default function SidebarShell({
                     border: `1px solid ${active ? theme.borderStrong : theme.border}`,
                     boxShadow: active ? "0 8px 22px rgba(0,0,0,0.25)" : "none",
                   }}
+                  title={collapsed ? item.label : undefined}
+                  aria-label={collapsed ? item.label : undefined}
                 >
                   <span
                     style={{
@@ -195,11 +206,11 @@ export default function SidebarShell({
                   >
                     {item.icon}
                   </span>
+
                   {!collapsed && (
-                    <span style={{ fontWeight: 650, letterSpacing: 0.1 }}>
-                      {item.label}
-                    </span>
+                    <span style={{ fontWeight: 650, letterSpacing: 0.1 }}>{item.label}</span>
                   )}
+
                   {!collapsed && active && (
                     <span
                       style={{
@@ -226,6 +237,8 @@ export default function SidebarShell({
               right: 16,
               color: theme.muted,
               fontSize: 12,
+              display: "flex",
+              justifyContent: collapsed ? "center" : "stretch",
             }}
           >
             {!collapsed ? (
@@ -235,6 +248,7 @@ export default function SidebarShell({
                   background: "rgba(255,255,255,0.03)",
                   borderRadius: 14,
                   padding: 12,
+                  width: "100%",
                 }}
               >
                 <div style={{ fontWeight: 700, color: theme.text, marginBottom: 6 }}>
