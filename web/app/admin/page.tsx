@@ -237,7 +237,6 @@ export default function AdminPage() {
             <div style={{ ...card, padding: 12, display: "flex", alignItems: "center", gap: 10 }}>
               <div style={{ fontSize: 12, color: "var(--muted)" }}>Export</div>
               <a style={btnGhost} href={downloadUrl(rosterId, "xlsx")}>XLSX</a>
-              <a style={btnGhost} href={downloadUrl(rosterId, "csv")}>CSV</a>
               <a style={btnGhost} href={downloadUrl(rosterId, "json")}>JSON</a>
               <a style={btnGhost} href={downloadUrl(rosterId, "pdf")}>PDF</a>
             </div>

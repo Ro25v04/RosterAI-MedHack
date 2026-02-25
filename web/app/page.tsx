@@ -232,7 +232,7 @@ export default function Home() {
       </section>
 
       <div style={{ marginTop: 14, opacity: 0.7, fontSize: 12, textAlign: "center" }}>
-        OptiNUM • Built for healthcare rostering • Hackathon prototype
+        OptiNUM • Built for healthcare rostering • Prototype
       </div>
     </div>
   );
