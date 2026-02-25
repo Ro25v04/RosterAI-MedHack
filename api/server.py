@@ -16,7 +16,7 @@ from api.export import (
 )
 
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import StreamingResponse, JSONResponse
+from fastapi.responses import StreamingResponse, JSONResponse, FileResponse
 from fastapi import FastAPI, UploadFile, File, HTTPException, Query
 
 from typing import Dict, Any, Optional, List, Tuple
@@ -445,3 +445,57 @@ def sheet_preview(
         "metrics": compute_metrics(cur),
         "table": build_table_for_sheet(cur, sheet, limit=limit, change_log=change_log),
     }
+
+
+@app.get("/roster/{roster_id}/download")
+def download_roster(
+    roster_id: str,
+    format: str = Query("xlsx"),
+):
+    if roster_id not in STORE:
+        raise HTTPException(status_code=404, detail="Roster not found")
+
+    fmt = (format or "xlsx").lower().strip()
+    store_item = STORE[roster_id]
+
+    original = store_item["original"]
+    current = store_item["current"]
+    change_log = store_item.get("change_log") or []
+
+    before_metrics = store_item.get(
+        "before_metrics") or compute_metrics(original)
+    after_metrics = compute_metrics(current)
+
+    tmpdir = tempfile.mkdtemp(prefix="optiNUM_")
+    base = os.path.join(tmpdir, f"roster_{roster_id}")
+
+    if fmt == "xlsx":
+        out_path = f"{base}.xlsx"
+        save_optimized_roster_to_excel(
+            original_roster=original,
+            optimized_roster=current,
+            before_metrics=before_metrics,
+            after_metrics=after_metrics,
+            out_path=out_path,
+            change_log=change_log,
+        )
+        return FileResponse(out_path, filename="optiNUM_roster.xlsx")
+
+    if fmt == "json":
+        out_path = f"{base}.json"
+        export_roster_json(current, out_path=out_path)
+        return FileResponse(out_path, filename="optiNUM_roster.json")
+
+    if fmt == "pdf":
+        out_path = f"{base}.pdf"
+        export_roster_pdf_report(
+            roster=current,
+            metrics=after_metrics,
+            change_log=change_log,
+            out_path=out_path,
+            max_days=14,
+        )
+        return FileResponse(out_path, filename="optiNUM_roster_report.pdf")
+
+    raise HTTPException(
+        status_code=400, detail="Invalid format. Use xlsx|json|pdf")
