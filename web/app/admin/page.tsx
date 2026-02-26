@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useDropzone } from "react-dropzone";
 import { apiUploadRoster, apiOptimize, apiChat, downloadUrl } from "../../lib/api";
+import { apiUploadCompliance, apiGetCompliance, apiValidateCompliance } from "../../lib/api";
 
 type ChatItem = { role: "user" | "bot"; text: string };
 
@@ -37,6 +38,9 @@ export default function AdminPage() {
   // UI state
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [complianceFileName, setComplianceFileName] = useState<string | null>(null);
+  const [rules, setRules] = useState<string[]>([]);
+  const [violations, setViolations] = useState<any[] | null>(null);
 
   // Upload UI
   const [uploadedFileName, setUploadedFileName] = useState<string | null>(null);
@@ -101,6 +105,21 @@ export default function AdminPage() {
     multiple: false,
   });
 
+    const complianceDz = useDropzone({
+    onDrop: async (accepted: File[]) => {
+      const file = accepted?.[0];
+      if (!file) return;
+      await uploadCompliance(file);
+    },
+    accept: {
+      "application/pdf": [".pdf"],
+      "text/plain": [".txt"],
+    },
+    multiple: false,
+    disabled: !rosterId || busy,
+  });
+
+
   async function refresh() {
     if (!rosterId) return;
     setBusy(true);
@@ -161,6 +180,42 @@ export default function AdminPage() {
       setError(e?.message || "Chat failed");
     }
   }
+
+    // -----------------------------
+  // Compliance
+  // -----------------------------
+  async function uploadCompliance(file: File) {
+    if (!rosterId) return;
+    setBusy(true);
+    setError(null);
+    setComplianceFileName(file.name);
+
+    try {
+      const data = await apiUploadCompliance(rosterId, file);
+      setRules(data.rules || []);
+      setViolations(null);
+    } catch (e: any) {
+      setError(e?.message || "Compliance upload failed");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function validateCompliance() {
+    if (!rosterId) return;
+    setBusy(true);
+    setError(null);
+
+    try {
+      const data = await apiValidateCompliance(rosterId);
+      setViolations(data.violations || []);
+    } catch (e: any) {
+      setError(e?.message || "Compliance validation failed");
+    } finally {
+      setBusy(false);
+    }
+  }
+
 
   // Stepper state
   const step = useMemo(() => {
@@ -322,6 +377,122 @@ export default function AdminPage() {
               </div>
             )}
           </div>
+
+          {/* Compliance card (pitch demo) */}
+          <div style={card}>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, flexWrap: "wrap" }}>
+              <div>
+                <div style={sectionTitle}>Compliance (Pitch Demo)</div>
+                <div style={{ marginTop: 6, color: "var(--muted)", fontSize: 13 }}>
+                  Upload an EBA/policy doc. We (mock) extract rules and validate the roster against them.
+                </div>
+              </div>
+
+              {complianceFileName && (
+                <span style={fileChip} title={complianceFileName}>
+                  {complianceFileName}
+                </span>
+              )}
+            </div>
+
+            <div
+              {...complianceDz.getRootProps()}
+              style={{
+                ...dropzone,
+                marginTop: 14,
+                opacity: !rosterId ? 0.6 : 1,
+                cursor: !rosterId ? "not-allowed" : "pointer",
+                outline: complianceDz.isDragActive ? "2px solid rgba(156,203,255,0.35)" : "none",
+              }}
+            >
+              <input {...complianceDz.getInputProps()} />
+              <div style={{ display: "grid", placeItems: "center", gap: 6 }}>
+                <div style={{ fontWeight: 900, letterSpacing: 0.2 }}>
+                  {!rosterId ? "Upload a roster first" : complianceDz.isDragActive ? "Drop to upload" : "Drag & drop compliance doc here"}
+                </div>
+                <div style={{ fontSize: 12, color: "var(--muted)" }}>.pdf / .txt</div>
+
+                <div style={{ marginTop: 8, display: "flex", gap: 10, flexWrap: "wrap", justifyContent: "center" }}>
+                  <span style={tinyPill}>Rule extraction</span>
+                  <span style={tinyPill}>Audit trail</span>
+                  <span style={tinyPill}>Roster validation</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Extracted rules */}
+            <div style={{ marginTop: 14 }}>
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, flexWrap: "wrap" }}>
+                <div style={{ fontWeight: 900, fontSize: 13 }}>Extracted rules</div>
+
+                <button style={btnSecondary} disabled={!rosterId || busy || rules.length === 0} onClick={validateCompliance}>
+                  Validate roster
+                </button>
+              </div>
+
+              {rules.length === 0 ? (
+                <div style={{ marginTop: 8, color: "var(--muted)", fontSize: 13 }}>
+                  Upload a compliance doc to see extracted rules (mock).
+                </div>
+              ) : (
+                <div style={{ marginTop: 10, display: "flex", gap: 8, flexWrap: "wrap" }}>
+                  {rules.map((r, idx) => (
+                    <span key={idx} style={pill}>
+                      {r}
+                    </span>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Violations */}
+            {violations && (
+              <div style={{ marginTop: 14, ...softPanel }}>
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, flexWrap: "wrap" }}>
+                  <div style={{ fontWeight: 950 }}>Compliance check</div>
+                  <span style={tinyPill}>{violations.length === 0 ? "No issues" : `${violations.length} issue(s)`}</span>
+                </div>
+
+                {violations.length === 0 ? (
+                  <div style={{ marginTop: 8, color: "var(--muted)", fontSize: 13 }}>
+                    ✅ Roster passes the current compliance rules.
+                  </div>
+                ) : (
+                  <div style={{ marginTop: 10, display: "grid", gap: 8 }}>
+                    {violations.slice(0, 6).map((v: any, i: number) => (
+                      <div key={i} style={{ padding: 10, borderRadius: 12, border: "1px solid var(--border)", background: "rgba(255,255,255,0.02)" }}>
+                        <div style={{ fontWeight: 900, fontSize: 13 }}>{v.type}</div>
+                        <div style={{ marginTop: 4, color: "var(--muted)", fontSize: 13 }}>
+                          Staff <b style={{ color: "var(--text)" }}>{v.staff_id}</b> • {v.date} — {v.message}
+                        </div>
+                      </div>
+                    ))}
+                    {violations.length > 6 && (
+                      <div style={{ marginTop: 4, color: "var(--muted)", fontSize: 12 }}>
+                        Showing 6 of {violations.length}. (Pitch demo)
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Pitch-only CTA */}
+            <div style={{ marginTop: 14, display: "flex", gap: 10, flexWrap: "wrap" }}>
+              <button
+                style={btnPrimary}
+                disabled={!rosterId || busy || rules.length === 0}
+                onClick={runOptimize}
+                title="Pitch demo: re-run optimize after rules are extracted"
+              >
+                Re-optimise with compliance rules
+              </button>
+
+              <div style={{ color: "var(--muted)", fontSize: 12, lineHeight: 1.5, alignSelf: "center" }}>
+                For hackathon: we mock extraction + validation, but the flow mirrors a real compliance engine.
+              </div>
+            </div>
+          </div>   
 
           {/* Preview */}
           <div style={card}>
@@ -533,6 +704,8 @@ function StepChip(props: { label: string; active?: boolean; done?: boolean }) {
   );
 }
 
+
+
 function formatCell(v: any) {
   if (v === null || v === undefined) return "";
   if (typeof v === "object") return JSON.stringify(v);
@@ -709,3 +882,4 @@ const td: React.CSSProperties = {
   color: "var(--text)",
   fontSize: 13,
 };
+

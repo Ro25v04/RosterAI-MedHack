@@ -18,6 +18,8 @@ from api.export import (
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse, JSONResponse, FileResponse
 from fastapi import FastAPI, UploadFile, File, HTTPException, Query
+from datetime import datetime, timedelta
+
 
 from typing import Dict, Any, Optional, List, Tuple
 import tempfile
@@ -499,3 +501,160 @@ def download_roster(
 
     raise HTTPException(
         status_code=400, detail="Invalid format. Use xlsx|json|pdf")
+
+
+def _mock_rules(filename: str) -> list[str]:
+    # Pitch-friendly defaults
+    rules = [
+        "Max consecutive NIGHT shifts: 2",
+        "Minimum rest between shifts: 10 hours",
+        "No NIGHT → DAY turnaround",
+        "Skill mix per shift: RN ≥ 2, EN ≥ 1",
+        "Max weekly hours per nurse: 38",
+        "Meal break required if shift ≥ 6h",
+    ]
+    if filename and ("eba" in filename.lower() or "award" in filename.lower()):
+        rules.insert(0, "EBA-aware: interpret fatigue + breaks clauses")
+    return rules
+
+def _validate_against_mock_rules(roster: dict, rules: list[str]) -> list[dict]:
+    # Simple (but believable) validation checks for pitch
+    assignments = roster.get("assignments", [])
+
+    # Parse dates
+    def parse_date(d: str) -> datetime:
+        # expected "YYYY-MM-DD"
+        return datetime.strptime(d, "%Y-%m-%d")
+
+    # Shift time windows (approx)
+    # (start_hour, end_hour, crosses_midnight)
+    SHIFT_WINDOWS = {
+        "DAY": (7, 15, False),
+        "EVE": (13, 21, False),
+        "NIGHT": (21, 7, True),
+    }
+
+    # Build staff -> list of (start_dt, end_dt, shift, date)
+    per_staff: dict[str, list[tuple[datetime, datetime, str, str]]] = {}
+    for a in assignments:
+        sid = str(a.get("staff_id", ""))
+        shift = str(a.get("shift", "")).upper()
+        date = str(a.get("date", ""))
+
+        if not sid or not date or shift not in SHIFT_WINDOWS:
+            continue
+
+        base = parse_date(date)
+        sh, eh, cross = SHIFT_WINDOWS[shift]
+        start_dt = base.replace(hour=sh, minute=0, second=0, microsecond=0)
+        end_dt = base.replace(hour=eh, minute=0, second=0, microsecond=0)
+        if cross:
+            end_dt = end_dt + timedelta(days=1)
+
+        per_staff.setdefault(sid, []).append((start_dt, end_dt, shift, date))
+
+    # Sort shifts per staff
+    for sid in per_staff:
+        per_staff[sid].sort(key=lambda x: x[0])
+
+    violations: list[dict] = []
+
+    # Extract numeric constraints from rule strings (keep defaults if not found)
+    max_consec_nights = 2
+    min_rest_hours = 10
+
+    # Check per staff
+    for sid, shifts in per_staff.items():
+        consec_nights = 0
+        last_shift = None
+
+        for i, (start_dt, end_dt, shift, date) in enumerate(shifts):
+            # consecutive nights
+            if shift == "NIGHT":
+                consec_nights += 1
+            else:
+                consec_nights = 0
+
+            if consec_nights > max_consec_nights:
+                violations.append({
+                    "type": "MaxConsecutiveNights",
+                    "staff_id": sid,
+                    "date": date,
+                    "message": f"More than {max_consec_nights} consecutive NIGHT shifts."
+                })
+
+            # rest time + turnaround checks
+            if last_shift:
+                prev_end, prev_shift, prev_date = last_shift
+                rest_hours = (start_dt - prev_end).total_seconds() / 3600.0
+
+                if rest_hours < min_rest_hours:
+                    violations.append({
+                        "type": "MinRest",
+                        "staff_id": sid,
+                        "date": date,
+                        "message": f"Rest only {rest_hours:.1f}h (< {min_rest_hours}h)."
+                    })
+
+                if prev_shift == "NIGHT" and shift == "DAY":
+                    violations.append({
+                        "type": "NightToDayTurnaround",
+                        "staff_id": sid,
+                        "date": date,
+                        "message": "NIGHT → DAY turnaround detected."
+                    })
+
+            last_shift = (end_dt, shift, date)
+
+    return violations
+
+
+@app.post("/roster/{roster_id}/compliance/upload")
+async def compliance_upload(roster_id: str, file: UploadFile = File(...)):
+    if roster_id not in STORE:
+        raise HTTPException(status_code=404, detail="Roster not found")
+
+    # Accept pdf/txt for the pitch demo; we won't parse it in hackathon time
+    if not file.filename.lower().endswith((".pdf", ".txt", ".docx")):
+        raise HTTPException(status_code=400, detail="Upload a .pdf, .txt, or .docx compliance file")
+
+    rules = _mock_rules(file.filename)
+
+    STORE[roster_id]["compliance"] = {
+        "filename": file.filename,
+        "rules": rules,
+        "uploaded": True,
+    }
+
+    return {
+        "roster_id": roster_id,
+        "filename": file.filename,
+        "rules": rules,
+        "note": "Mock extraction (pitch demo).",
+    }
+
+
+@app.get("/roster/{roster_id}/compliance")
+def compliance_get(roster_id: str):
+    if roster_id not in STORE:
+        raise HTTPException(status_code=404, detail="Roster not found")
+    c = STORE[roster_id].get("compliance") or {"filename": None, "rules": [], "uploaded": False}
+    return c
+
+
+@app.post("/roster/{roster_id}/compliance/validate")
+def compliance_validate(roster_id: str):
+    if roster_id not in STORE:
+        raise HTTPException(status_code=404, detail="Roster not found")
+
+    cur = STORE[roster_id]["current"]
+    c = STORE[roster_id].get("compliance") or {}
+    rules = c.get("rules") or []
+
+    violations = _validate_against_mock_rules(cur, rules)
+
+    return {
+        "ok": len(violations) == 0,
+        "violations": violations,
+        "rule_count": len(rules),
+    }
