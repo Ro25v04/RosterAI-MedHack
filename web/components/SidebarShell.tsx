@@ -1,9 +1,9 @@
 "use client";
 
+import React, { useMemo, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useMemo, useState } from "react";
 
 type NavItem = { href: string; label: string; icon: React.ReactNode };
 
@@ -66,11 +66,38 @@ function IconNurse(props: { active?: boolean }) {
   );
 }
 
+function ChevronLeft() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+      <path
+        d="M15 18l-6-6 6-6"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+function ChevronRight() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+      <path
+        d="M9 6l6 6-6 6"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
 export default function SidebarShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const [collapsed, setCollapsed] = useState(false);
 
-  // Theme (match your logo: soft blue accent, clean dark background)
+  // Theme
   const theme = useMemo(
     () => ({
       bg: "#0B0F14",
@@ -107,30 +134,36 @@ export default function SidebarShell({ children }: { children: React.ReactNode }
           ? "Nurse Preferences"
           : "OptiNUM";
 
+  const SIDEBAR_W_EXPANDED = 300;
+  const SIDEBAR_W_COLLAPSED = 96;
+
   return (
     <div style={{ minHeight: "100vh", background: theme.bg, color: theme.text }}>
       <div style={{ display: "flex", minHeight: "100vh" }}>
         {/* Sidebar */}
         <aside
           style={{
-            width: collapsed ? 92 : 360,
+            width: collapsed ? SIDEBAR_W_COLLAPSED : SIDEBAR_W_EXPANDED,
             transition: "width 180ms ease",
             borderRight: `1px solid ${theme.border}`,
             background: theme.panel,
-            padding: 16,
+            padding: 14,
             position: "relative",
           }}
         >
-          {/* Floating toggle (always reachable) */}
+          {/* Edge toggle (centered vertically like a drawer handle) */}
           <button
             onClick={() => setCollapsed((v) => !v)}
+            title={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+            aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
             style={{
               position: "absolute",
-              top: 24,
-              right: -14,
-              width: 28,
-              height: 28,
-              borderRadius: 999,
+              top: "50%",
+              right: -18,
+              transform: "translateY(-50%)",
+              width: 36,
+              height: 56,
+              borderRadius: 14,
               border: `1px solid ${theme.borderStrong}`,
               background: theme.panel2,
               color: theme.text,
@@ -138,28 +171,33 @@ export default function SidebarShell({ children }: { children: React.ReactNode }
               display: "grid",
               placeItems: "center",
               boxShadow: theme.shadow,
-              zIndex: 20,
+              zIndex: 50,
               userSelect: "none",
+              backdropFilter: "blur(10px)",
             }}
-            title="Toggle sidebar"
-            aria-label="Toggle sidebar"
           >
-            {collapsed ? "→" : "←"}
+            {collapsed ? <ChevronRight /> : <ChevronLeft />}
           </button>
 
-          {/* Brand (full logo expanded, mascot collapsed) */}
-          <div style={{ display: "flex", justifyContent: collapsed ? "center" : "flex-start" }}>
+          {/* Brand block (taller + bigger logo) */}
+          <div
+            style={{
+              height: 100,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: collapsed ? "center" : "flex-start",
+              paddingLeft: collapsed ? 0 : 8,
+              marginBottom: 18,
+            }}
+          >
             <div
               style={{
-                width: collapsed ? 56 : 200,
-                height: collapsed ? 56 : 70,
                 position: "relative",
-                flex: "0 0 auto",
-                transition: "all 180ms ease",
-                filter: "drop-shadow(0 10px 22px rgba(0,0,0,0.25))",
-                marginTop: 6,
+                width: collapsed ? 64 : 240,
+                height: collapsed ? 64 : 72,
+                transform: collapsed ? "scale(1.15)" : "scale(1.25)",
+                transformOrigin: collapsed ? "center" : "left center",
               }}
-              title="OptiNUM"
             >
               <Image
                 src={collapsed ? "/logo-mascot.png" : "/logo-new.png"}
@@ -172,35 +210,40 @@ export default function SidebarShell({ children }: { children: React.ReactNode }
           </div>
 
           {/* Nav */}
-          <nav style={{ marginTop: 18, display: "grid", gap: 8 }}>
+          <nav style={{ display: "grid", gap: 10 }}>
             {nav.map((item) => {
               const active = pathname === item.href;
+
               return (
                 <Link
                   key={item.href}
                   href={item.href}
                   style={{
+                    height: 54,
                     display: "flex",
                     alignItems: "center",
                     justifyContent: collapsed ? "center" : "flex-start",
-                    gap: 10,
-                    padding: collapsed ? "14px 0" : "10px 12px",
-                    borderRadius: 14,
+                    gap: 12,
+                    padding: collapsed ? "0" : "0 12px",
+                    borderRadius: 16,
                     textDecoration: "none",
                     color: theme.text,
-                    background: active ? theme.panel2 : "transparent",
-                    border: `1px solid ${active ? theme.borderStrong : theme.border}`,
-                    boxShadow: active ? "0 8px 22px rgba(0,0,0,0.25)" : "none",
+                    background: active ? "rgba(140,201,255,0.10)" : "rgba(255,255,255,0.02)",
+                    border: `1px solid ${active ? "rgba(140,201,255,0.22)" : theme.border}`,
+                    boxShadow: active ? "0 10px 26px rgba(0,0,0,0.26)" : "none",
                   }}
                   title={collapsed ? item.label : undefined}
                   aria-label={collapsed ? item.label : undefined}
                 >
                   <span
                     style={{
-                      width: 24,
-                      height: 24,
+                      width: 38,
+                      height: 38,
+                      borderRadius: 14,
                       display: "grid",
                       placeItems: "center",
+                      background: active ? "rgba(255,255,255,0.06)" : "rgba(255,255,255,0.03)",
+                      border: `1px solid ${active ? "rgba(140,201,255,0.25)" : theme.border}`,
                       color: active ? theme.accent : theme.text,
                     }}
                   >
@@ -232,9 +275,9 @@ export default function SidebarShell({ children }: { children: React.ReactNode }
           <div
             style={{
               position: "absolute",
-              bottom: 16,
-              left: 16,
-              right: 16,
+              bottom: 14,
+              left: 14,
+              right: 14,
               color: theme.muted,
               fontSize: 12,
               display: "flex",
@@ -246,7 +289,7 @@ export default function SidebarShell({ children }: { children: React.ReactNode }
                 style={{
                   border: `1px solid ${theme.border}`,
                   background: "rgba(255,255,255,0.03)",
-                  borderRadius: 14,
+                  borderRadius: 16,
                   padding: 12,
                   width: "100%",
                 }}
