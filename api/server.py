@@ -1,5 +1,6 @@
 # api/server.py
 from __future__ import annotations
+from fastapi.staticfiles import StaticFiles
 
 from api.data_loader import (
     load_roster_from_excel,
@@ -517,6 +518,7 @@ def _mock_rules(filename: str) -> list[str]:
         rules.insert(0, "EBA-aware: interpret fatigue + breaks clauses")
     return rules
 
+
 def _validate_against_mock_rules(roster: dict, rules: list[str]) -> list[dict]:
     # Simple (but believable) validation checks for pitch
     assignments = roster.get("assignments", [])
@@ -616,7 +618,8 @@ async def compliance_upload(roster_id: str, file: UploadFile = File(...)):
 
     # Accept pdf/txt for the pitch demo; we won't parse it in hackathon time
     if not file.filename.lower().endswith((".pdf", ".txt", ".docx")):
-        raise HTTPException(status_code=400, detail="Upload a .pdf, .txt, or .docx compliance file")
+        raise HTTPException(
+            status_code=400, detail="Upload a .pdf, .txt, or .docx compliance file")
 
     rules = _mock_rules(file.filename)
 
@@ -638,7 +641,8 @@ async def compliance_upload(roster_id: str, file: UploadFile = File(...)):
 def compliance_get(roster_id: str):
     if roster_id not in STORE:
         raise HTTPException(status_code=404, detail="Roster not found")
-    c = STORE[roster_id].get("compliance") or {"filename": None, "rules": [], "uploaded": False}
+    c = STORE[roster_id].get("compliance") or {
+        "filename": None, "rules": [], "uploaded": False}
     return c
 
 
@@ -658,3 +662,23 @@ def compliance_validate(roster_id: str):
         "violations": violations,
         "rule_count": len(rules),
     }
+
+
+# -----------------------------------
+# Serve Next.js static frontend
+# -----------------------------------
+
+
+FRONTEND_DIR = Path(__file__).resolve().parent.parent / "web" / "out"
+
+if FRONTEND_DIR.exists():
+    app.mount("/_next", StaticFiles(directory=FRONTEND_DIR / "_next"), name="next")
+
+    @app.get("/{full_path:path}")
+    async def serve_frontend(full_path: str):
+        file_path = FRONTEND_DIR / full_path
+
+        if file_path.exists() and file_path.is_file():
+            return FileResponse(file_path)
+
+        return FileResponse(FRONTEND_DIR / "index.html")

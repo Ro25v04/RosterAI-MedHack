@@ -1,8 +1,5 @@
-const BASE = process.env.NEXT_PUBLIC_API_BASE_URL;
+const BASE = "";
 
-if (!BASE) {
-  console.warn("NEXT_PUBLIC_API_BASE_URL is not set. Create web/.env.local");
-}
 
 export async function apiUploadRoster(file: File) {
   const fd = new FormData();

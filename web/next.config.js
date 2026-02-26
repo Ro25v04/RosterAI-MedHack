@@ -1,9 +1,7 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  webpack: (config, { dev }) => {
-    if (dev) config.cache = false; // fixes "Failed to allocate memory" on some laptops
-    return config;
-  },
+  output: "export",
+  images: { unoptimized: true },
 };
 
 module.exports = nextConfig;
