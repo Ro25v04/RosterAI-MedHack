@@ -418,11 +418,6 @@ def chat(roster_id: str, body: Dict[str, Any]):
     return {"type": "answer", "reply": reply}
 
 
-@app.get("/")
-def root():
-    return {"message": "Roster API running. Go to /docs"}
-
-
 @app.get("/roster/{roster_id}/sheet_preview")
 def sheet_preview(
     roster_id: str,
