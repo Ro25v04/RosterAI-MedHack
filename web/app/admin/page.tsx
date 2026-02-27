@@ -49,13 +49,14 @@ export default function AdminPage() {
   const [chatMsg, setChatMsg] = useState("");
   const [chatLog, setChatLog] = useState<ChatItem[]>([]);
 
+
   async function fetchSheet(roster_id: string, sheet: string) {
     const BASE = process.env.NEXT_PUBLIC_API_BASE_URL;
     if (!BASE) throw new Error("NEXT_PUBLIC_API_BASE_URL not set");
 
-    const url = `${BASE}/roster/${roster_id}/sheet_preview?sheet=${encodeURIComponent(
-      sheet
-    )}&limit=${LIMIT}`;
+    // ✅ use /preview (not /sheet_preview)
+    const url = `${BASE}/roster/${roster_id}/preview?sheet=${encodeURIComponent(sheet)}&limit=${LIMIT}`;
+
     const res = await fetch(url);
     if (!res.ok) throw new Error(await res.text());
     const data = (await res.json()) as SheetPreviewResponse;
@@ -105,7 +106,7 @@ export default function AdminPage() {
     multiple: false,
   });
 
-    const complianceDz = useDropzone({
+  const complianceDz = useDropzone({
     onDrop: async (accepted: File[]) => {
       const file = accepted?.[0];
       if (!file) return;
@@ -181,7 +182,7 @@ export default function AdminPage() {
     }
   }
 
-    // -----------------------------
+  // -----------------------------
   // Compliance
   // -----------------------------
   async function uploadCompliance(file: File) {
@@ -492,7 +493,7 @@ export default function AdminPage() {
                 For hackathon: we mock extraction + validation, but the flow mirrors a real compliance engine.
               </div>
             </div>
-          </div>   
+          </div>
 
           {/* Preview */}
           <div style={card}>
