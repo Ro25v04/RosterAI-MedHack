@@ -313,7 +313,7 @@ export default function SidebarShell({ children }: { children: React.ReactNode }
               height: 60,
               display: "flex",
               alignItems: "center",
-              justifyContent: "space-between",
+              justifyContent: "flex-start",
               padding: "0 18px",
               borderBottom: `1px solid ${theme.border}`,
               background: theme.panel,
@@ -324,33 +324,6 @@ export default function SidebarShell({ children }: { children: React.ReactNode }
             }}
           >
             <div style={{ fontWeight: 800, letterSpacing: 0.2 }}>{title}</div>
-
-            <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
-              <span
-                style={{
-                  fontSize: 12,
-                  padding: "7px 12px",
-                  border: `1px solid ${theme.borderStrong}`,
-                  borderRadius: 999,
-                  color: theme.text,
-                  background: "rgba(255,255,255,0.03)",
-                }}
-              >
-                Local Demo
-              </span>
-              <span
-                style={{
-                  fontSize: 12,
-                  padding: "7px 12px",
-                  borderRadius: 999,
-                  color: "#06111F",
-                  background: `linear-gradient(135deg, ${theme.accent}, ${theme.accent2})`,
-                  fontWeight: 800,
-                }}
-              >
-                Ready
-              </span>
-            </div>
           </div>
 
           <div style={{ padding: 22 }}>{children}</div>
