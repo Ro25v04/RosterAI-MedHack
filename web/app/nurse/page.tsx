@@ -18,17 +18,11 @@ export default function NursePage() {
   const [minRestHours, setMinRestHours] = useState(10);
   const [overtimeTolerance, setOvertimeTolerance] = useState<"Low" | "Medium" | "High">("Low");
 
-  const [unavailableDates, setUnavailableDates] = useState<string[]>([
-    "2026-03-12",
-    "2026-03-18",
-    "2026-03-22",
-  ]);
-
+  const [unavailableDates, setUnavailableDates] = useState<string[]>(["2026-03-12", "2026-03-18", "2026-03-22"]);
   const [newDate, setNewDate] = useState("");
   const [toast, setToast] = useState<string | null>(null);
 
   const fatigueRisk = useMemo(() => {
-    // Simple “looks smart” heuristic (UI-only)
     let score = 0;
     score += Math.max(0, (maxConsecutive - 3) * 12);
     score += minRestHours <= 8 ? 20 : minRestHours <= 10 ? 10 : 0;
@@ -82,16 +76,27 @@ export default function NursePage() {
   }
 
   function savePrefs() {
-    // UI-only (hackathon). No backend.
     showToast("Preferences saved (demo)");
   }
+
+  // ----------------------------
+  // UI styles (fixed overlap)
+  // ----------------------------
+  const CONTROL_H = 42;
+
+  const pageWrap: React.CSSProperties = {
+    maxWidth: 1200,
+    margin: "0 auto",
+    padding: 22,
+    position: "relative",
+  };
 
   const card: React.CSSProperties = {
     border: "1px solid var(--border)",
     background: "rgba(16,27,45,0.55)",
     borderRadius: 18,
-    padding: 16,
-    boxShadow: "0 14px 40px rgba(0,0,0,0.25)",
+    padding: 14,
+    boxShadow: "0 12px 34px rgba(0,0,0,0.22)",
     backdropFilter: "blur(10px)",
   };
 
@@ -112,68 +117,97 @@ export default function NursePage() {
     display: "inline-flex",
     alignItems: "center",
     gap: 8,
-    border: "1px solid var(--border)",
-    background: "rgba(255,255,255,0.03)",
+    border: "1px solid rgba(255,255,255,0.10)",
+    background: "rgba(255,255,255,0.02)",
     borderRadius: 999,
-    padding: "7px 10px",
-    fontSize: 12,
-    color: "var(--text)",
-    fontWeight: 850,
+    padding: "6px 10px",
+    fontSize: 11,
+    color: "rgba(255,255,255,0.88)",
+    fontWeight: 800,
+    lineHeight: 1,
   };
 
-  const btnPrimary: React.CSSProperties = {
-    border: "1px solid rgba(156,203,255,0.35)",
-    background: "linear-gradient(135deg, var(--accent), var(--accent-2))",
-    color: "#071427",
-    padding: "10px 12px",
+  const btnBase: React.CSSProperties = {
+    height: CONTROL_H,
+    padding: "0 14px",
     borderRadius: 14,
     fontWeight: 900,
     cursor: "pointer",
     whiteSpace: "nowrap",
+    display: "inline-flex",
+    alignItems: "center",
+    justifyContent: "center",
+  };
+
+  const btnPrimary: React.CSSProperties = {
+    ...btnBase,
+    border: "1px solid rgba(156,203,255,0.35)",
+    background: "linear-gradient(135deg, var(--accent), var(--accent-2))",
+    color: "#071427",
   };
 
   const btnSecondary: React.CSSProperties = {
+    ...btnBase,
     border: "1px solid var(--border)",
     background: "rgba(255,255,255,0.03)",
     color: "var(--text)",
-    padding: "10px 12px",
-    borderRadius: 14,
-    fontWeight: 850,
-    cursor: "pointer",
-    whiteSpace: "nowrap",
   };
 
-  const input: React.CSSProperties = {
+  const controlBase: React.CSSProperties = {
     width: "100%",
+    height: CONTROL_H,
     borderRadius: 14,
     border: "1px solid var(--border)",
     background: "rgba(0,0,0,0.18)",
     color: "var(--text)",
-    padding: "10px 12px",
+    padding: "0 12px",
     fontSize: 13,
     outline: "none",
+
+    // fixes: stop border “bleed” + keep box sizing consistent
+    boxSizing: "border-box",
+    display: "block",
+    backgroundClip: "padding-box",
+    position: "relative",
   };
 
+  const input: React.CSSProperties = { ...controlBase };
+
+  // remove native select painting quirks
   const select: React.CSSProperties = {
-    borderRadius: 14,
-    border: "1px solid var(--border)",
+    ...controlBase,
     background: "rgba(255,255,255,0.03)",
-    color: "var(--text)",
-    padding: "10px 12px",
-    fontSize: 13,
-    outline: "none",
-    width: "100%",
+    appearance: "none",
+    WebkitAppearance: "none",
+    MozAppearance: "none",
+  };
+
+  const label: React.CSSProperties = {
+    fontSize: 12,
+    color: "var(--muted)",
+    marginBottom: 5,
+  };
+
+  // wrapper for each field to keep stacking/paint clean
+  const field: React.CSSProperties = {
+    minWidth: 0,
+    position: "relative",
+    zIndex: 0,
   };
 
   const toggleBtn = (active: boolean): React.CSSProperties => ({
+    height: CONTROL_H,
     border: active ? "1px solid rgba(156,203,255,0.35)" : "1px solid var(--border)",
     background: active ? "rgba(156,203,255,0.12)" : "rgba(255,255,255,0.03)",
     color: "var(--text)",
-    padding: "10px 12px",
+    padding: "0 14px",
     borderRadius: 999,
     cursor: "pointer",
     fontWeight: 900,
     fontSize: 12,
+    display: "inline-flex",
+    alignItems: "center",
+    justifyContent: "center",
   });
 
   const metricBox: React.CSSProperties = {
@@ -198,8 +232,24 @@ export default function NursePage() {
     background: "linear-gradient(135deg, var(--accent), var(--accent-2))",
   });
 
+  // small helper for custom ▼ on selects (since appearance:none)
+  const selectWrap: React.CSSProperties = { position: "relative" };
+  const selectArrow: React.CSSProperties = {
+    position: "absolute",
+    right: 12,
+    top: "50%",
+    transform: "translateY(-50%)",
+    pointerEvents: "none",
+    color: "rgba(255,255,255,0.7)",
+    fontSize: 12,
+    fontWeight: 900,
+  };
+
+  // ----------------------------
+  // Render
+  // ----------------------------
   return (
-    <div style={{ maxWidth: 1200, margin: "0 auto", padding: 22, position: "relative" }}>
+    <div style={pageWrap}>
       {/* Toast */}
       {toast && (
         <div
@@ -224,21 +274,21 @@ export default function NursePage() {
 
       {/* Header */}
       <div style={{ display: "flex", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
-        <div>
-          <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
-            <h1 style={{ margin: 0, fontSize: 22, fontWeight: 950, letterSpacing: 0.2 }}>Nurse Preferences</h1>
-            <span style={chip}>Prototype (UI only)</span>
-            <span style={{ ...chip, borderColor: "rgba(156,203,255,0.25)" }}>
-              Feeds constraints → optimisation
-            </span>
+        <div style={{ minWidth: 280 }}>
+          <h1 style={{ margin: 0, fontSize: 22, fontWeight: 950, letterSpacing: 0.2 }}>Nurse Preferences</h1>
+
+          <div style={{ marginTop: 8, display: "flex", gap: 8, flexWrap: "wrap" }}>
+            <span style={chip}>Prototype</span>
+            <span style={{ ...chip, borderColor: "rgba(156,203,255,0.25)" }}>Feeds constraints → optimisation</span>
           </div>
-          <div style={{ marginTop: 8, color: "var(--muted)", lineHeight: 1.6 }}>
+
+          <div style={{ marginTop: 10, color: "var(--muted)", lineHeight: 1.6 }}>
             In production, nurse constraints would be saved and used by the optimiser. For the hackathon demo, this page
             showcases the inputs OptiNUM is designed to support.
           </div>
         </div>
 
-        <div style={{ display: "flex", gap: 10, flexWrap: "wrap", justifyContent: "flex-end" }}>
+        <div style={{ display: "flex", gap: 10, flexWrap: "wrap", justifyContent: "flex-end", alignItems: "flex-start" }}>
           <button style={btnSecondary} onClick={() => showToast("Loaded sample preferences")}>
             Load sample
           </button>
@@ -256,41 +306,59 @@ export default function NursePage() {
             <div style={sectionTitle}>Profile</div>
             <div style={sub}>Basic info + role context (used for skill-based matching).</div>
 
-            <div style={{ marginTop: 12, display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: 12 }}>
-              <div>
-                <div style={{ fontSize: 12, color: "var(--muted)", marginBottom: 6 }}>Name</div>
+            <div
+              style={{
+                marginTop: 12,
+                display: "grid",
+                gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
+                columnGap: 18,
+                rowGap: 12,
+                isolation: "isolate",
+              }}
+            >
+              <div style={field}>
+                <div style={label}>Name</div>
                 <input style={input} value={name} onChange={(e) => setName(e.target.value)} />
               </div>
 
-              <div>
-                <div style={{ fontSize: 12, color: "var(--muted)", marginBottom: 6 }}>Unit</div>
-                <select style={select} value={unit} onChange={(e) => setUnit(e.target.value)}>
-                  <option>General Ward</option>
-                  <option>Emergency</option>
-                  <option>ICU</option>
-                  <option>Surgery</option>
-                  <option>Paediatrics</option>
-                </select>
+              <div style={field}>
+                <div style={label}>Unit</div>
+                <div style={selectWrap}>
+                  <select style={select} value={unit} onChange={(e) => setUnit(e.target.value)}>
+                    <option>General Ward</option>
+                    <option>Emergency</option>
+                    <option>ICU</option>
+                    <option>Surgery</option>
+                    <option>Paediatrics</option>
+                  </select>
+                  <span style={selectArrow}>▾</span>
+                </div>
               </div>
 
-              <div>
-                <div style={{ fontSize: 12, color: "var(--muted)", marginBottom: 6 }}>Contract</div>
-                <select style={select} value={contract} onChange={(e) => setContract(e.target.value)}>
-                  <option>Full-time</option>
-                  <option>Part-time</option>
-                  <option>Casual</option>
-                </select>
+              <div style={field}>
+                <div style={label}>Contract</div>
+                <div style={selectWrap}>
+                  <select style={select} value={contract} onChange={(e) => setContract(e.target.value)}>
+                    <option>Full-time</option>
+                    <option>Part-time</option>
+                    <option>Casual</option>
+                  </select>
+                  <span style={selectArrow}>▾</span>
+                </div>
               </div>
 
-              <div>
-                <div style={{ fontSize: 12, color: "var(--muted)", marginBottom: 6 }}>Primary skill</div>
-                <select style={select} value={skill} onChange={(e) => setSkill(e.target.value)}>
-                  <option>General</option>
-                  <option>ICU trained</option>
-                  <option>Paeds trained</option>
-                  <option>Medication certified</option>
-                  <option>Charge nurse</option>
-                </select>
+              <div style={field}>
+                <div style={label}>Primary skill</div>
+                <div style={selectWrap}>
+                  <select style={select} value={skill} onChange={(e) => setSkill(e.target.value)}>
+                    <option>General</option>
+                    <option>ICU trained</option>
+                    <option>Paeds trained</option>
+                    <option>Medication certified</option>
+                    <option>Charge nurse</option>
+                  </select>
+                  <span style={selectArrow}>▾</span>
+                </div>
               </div>
             </div>
           </div>
@@ -309,9 +377,9 @@ export default function NursePage() {
               ))}
             </div>
 
-            <div style={{ marginTop: 14, display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: 12 }}>
+            <div style={{ marginTop: 14, display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: 10 }}>
               <div>
-                <div style={{ fontSize: 12, color: "var(--muted)", marginBottom: 6 }}>Preferred days off</div>
+                <div style={label}>Preferred days off</div>
                 <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
                   {(["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"] as Day[]).map((d) => (
                     <button key={d} style={toggleBtn(preferredDaysOff.includes(d))} onClick={() => toggleDay(d)}>
@@ -323,14 +391,9 @@ export default function NursePage() {
               </div>
 
               <div>
-                <div style={{ fontSize: 12, color: "var(--muted)", marginBottom: 6 }}>Unavailable dates</div>
-                <div style={{ display: "flex", gap: 8 }}>
-                  <input
-                    style={input}
-                    type="date"
-                    value={newDate}
-                    onChange={(e) => setNewDate(e.target.value)}
-                  />
+                <div style={label}>Unavailable dates</div>
+                <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                  <input style={input} type="date" value={newDate} onChange={(e) => setNewDate(e.target.value)} />
                   <button style={btnSecondary} onClick={addDate}>
                     Add
                   </button>
@@ -347,13 +410,13 @@ export default function NursePage() {
                           display: "inline-flex",
                           alignItems: "center",
                           gap: 8,
-                          border: "1px solid var(--border)",
-                          background: "rgba(255,255,255,0.03)",
+                          border: "1px solid rgba(255,255,255,0.10)",
+                          background: "rgba(255,255,255,0.02)",
                           borderRadius: 999,
-                          padding: "7px 10px",
-                          fontSize: 12,
+                          padding: "6px 10px",
+                          fontSize: 11,
                           fontWeight: 850,
-                          color: "var(--text)",
+                          color: "rgba(255,255,255,0.88)",
                         }}
                       >
                         {d}
@@ -362,9 +425,10 @@ export default function NursePage() {
                           style={{
                             border: "none",
                             background: "transparent",
-                            color: "var(--muted)",
+                            color: "rgba(255,255,255,0.65)",
                             cursor: "pointer",
                             fontWeight: 900,
+                            lineHeight: 1,
                           }}
                           title="Remove"
                         >
@@ -383,7 +447,7 @@ export default function NursePage() {
             <div style={sectionTitle}>Fatigue & safety constraints</div>
             <div style={sub}>These constraints are key inputs to overtime-aware optimisation.</div>
 
-            <div style={{ marginTop: 12, display: "grid", gridTemplateColumns: "repeat(3, minmax(0, 1fr))", gap: 12 }}>
+            <div style={{ marginTop: 12, display: "grid", gridTemplateColumns: "repeat(3, minmax(0, 1fr))", gap: 10 }}>
               <div style={metricBox}>
                 <div style={{ fontSize: 12, color: "var(--muted)" }}>Max consecutive shifts</div>
                 <div style={{ marginTop: 6, fontWeight: 950, fontSize: 18 }}>{maxConsecutive}</div>
@@ -393,32 +457,42 @@ export default function NursePage() {
                   max={7}
                   value={maxConsecutive}
                   onChange={(e) => setMaxConsecutive(Number(e.target.value))}
-                  style={{ width: "100%", marginTop: 8 }}
+                  style={{ width: "100%", marginTop: 10 }}
                 />
               </div>
 
               <div style={metricBox}>
                 <div style={{ fontSize: 12, color: "var(--muted)" }}>Minimum rest hours</div>
                 <div style={{ marginTop: 6, fontWeight: 950, fontSize: 18 }}>{minRestHours}h</div>
-                <select style={{ ...select, marginTop: 8 }} value={minRestHours} onChange={(e) => setMinRestHours(Number(e.target.value))}>
-                  <option value={8}>8</option>
-                  <option value={10}>10</option>
-                  <option value={12}>12</option>
-                </select>
+                <div style={selectWrap}>
+                  <select
+                    style={{ ...select, marginTop: 10 }}
+                    value={minRestHours}
+                    onChange={(e) => setMinRestHours(Number(e.target.value))}
+                  >
+                    <option value={8}>8</option>
+                    <option value={10}>10</option>
+                    <option value={12}>12</option>
+                  </select>
+                  <span style={selectArrow}>▾</span>
+                </div>
               </div>
 
               <div style={metricBox}>
                 <div style={{ fontSize: 12, color: "var(--muted)" }}>Overtime tolerance</div>
                 <div style={{ marginTop: 6, fontWeight: 950, fontSize: 18 }}>{overtimeTolerance}</div>
-                <select
-                  style={{ ...select, marginTop: 8 }}
-                  value={overtimeTolerance}
-                  onChange={(e) => setOvertimeTolerance(e.target.value as any)}
-                >
-                  <option>Low</option>
-                  <option>Medium</option>
-                  <option>High</option>
-                </select>
+                <div style={selectWrap}>
+                  <select
+                    style={{ ...select, marginTop: 10 }}
+                    value={overtimeTolerance}
+                    onChange={(e) => setOvertimeTolerance(e.target.value as any)}
+                  >
+                    <option>Low</option>
+                    <option>Medium</option>
+                    <option>High</option>
+                  </select>
+                  <span style={selectArrow}>▾</span>
+                </div>
               </div>
             </div>
           </div>
@@ -427,19 +501,20 @@ export default function NursePage() {
           <div style={card}>
             <div style={sectionTitle}>How this feeds optimisation</div>
             <div style={sub}>
-              In the full product, these preferences become constraints for the optimiser — and the AI assistant can explain trade-offs.
+              In the full product, these preferences become constraints for the optimiser — and the AI assistant can
+              explain trade-offs.
             </div>
 
-            <div style={{ marginTop: 12, display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+            <div style={{ marginTop: 12, display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
               <div style={metricBox}>
                 <div style={{ fontWeight: 950 }}>Constraint builder</div>
                 <div style={{ marginTop: 8, color: "var(--muted)", lineHeight: 1.6 }}>
                   Preferences are converted into machine-readable constraints (availability, rest rules, skills).
                 </div>
                 <div style={{ marginTop: 10, display: "grid", gap: 8 }}>
-                  <span style={chip}>Availability constraints</span>
-                  <span style={chip}>Skill coverage constraints</span>
-                  <span style={chip}>Fatigue constraints</span>
+                  <span style={chip}>Availability</span>
+                  <span style={chip}>Skill coverage</span>
+                  <span style={chip}>Fatigue rules</span>
                 </div>
               </div>
 
@@ -449,7 +524,15 @@ export default function NursePage() {
                   The optimiser balances fairness, coverage, and overtime — then exports back to Excel.
                 </div>
 
-                <div style={{ marginTop: 12, fontFamily: "ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace", fontSize: 12, opacity: 0.9 }}>
+                <div
+                  style={{
+                    marginTop: 12,
+                    fontFamily:
+                      "ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace",
+                    fontSize: 12,
+                    opacity: 0.9,
+                  }}
+                >
                   Nurse Preferences → Constraints → Optimisation → Balanced Roster
                 </div>
               </div>
@@ -472,8 +555,8 @@ export default function NursePage() {
             <div style={{ marginTop: 12, ...metricBox }}>
               <div style={{ fontSize: 12, color: "var(--muted)" }}>What judges should notice</div>
               <div style={{ marginTop: 8, lineHeight: 1.6, color: "rgba(255,255,255,0.9)", fontSize: 13 }}>
-                OptiNUM treats nurse wellbeing as a first-class constraint — not an afterthought — and the admin can still
-                override via AI edits when reality changes.
+                OptiNUM treats nurse wellbeing as a first-class constraint and the admin can still override via AI edits
+                when reality changes.
               </div>
             </div>
 
@@ -497,8 +580,8 @@ export default function NursePage() {
           >
             <div style={{ fontWeight: 950 }}>Hackathon note</div>
             <div style={{ marginTop: 6, color: "rgba(255,255,255,0.85)", lineHeight: 1.6 }}>
-              For the live demo, optimisation + AI edits happen in <b>Admin Console</b>. This page demonstrates the
-              human inputs OptiNUM is designed to support in production.
+              For the live demo, optimisation + AI edits happen in <b>Admin Console</b>. This page demonstrates the human
+              inputs OptiNUM is designed to support in production.
             </div>
           </div>
         </div>
