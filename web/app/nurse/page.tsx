@@ -277,14 +277,7 @@ export default function NursePage() {
         <div style={{ minWidth: 280 }}>
           <h1 style={{ margin: 0, fontSize: 22, fontWeight: 950, letterSpacing: 0.2 }}>Nurse Preferences</h1>
 
-          <div style={{ marginTop: 8, display: "flex", gap: 8, flexWrap: "wrap" }}>
-            <span style={chip}>Prototype</span>
-            <span style={{ ...chip, borderColor: "rgba(156,203,255,0.25)" }}>Feeds constraints → optimisation</span>
-          </div>
-
           <div style={{ marginTop: 10, color: "var(--muted)", lineHeight: 1.6 }}>
-            In production, nurse constraints would be saved and used by the optimiser. For the hackathon demo, this page
-            showcases the inputs OptiNUM is designed to support.
           </div>
         </div>
 
